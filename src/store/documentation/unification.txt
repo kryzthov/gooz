@@ -1,0 +1,20 @@
+Unification - design and API
+
+
+* Top-level unification
+Invoke this function to unify two arbitrary Oz values.
+
+    bool Unify(value1, value2);
+
+
+* Local transactional unification entry point
+While processing a unification operation, invoke this static method to
+request the unification of two random values.
+
+    static bool Value::Unify(context, value1, value2);
+
+
+* Value-specific unification implementation
+Implement the unification by overloading the following virtual method.
+
+    virtual bool Value::UnifyWith(context, other_value);

@@ -1,0 +1,65 @@
+// -*- mode: protobuf -*-
+// Protocol buffer to serialize Oz values.
+
+syntax = "proto2";
+
+option java_package = "oz";
+option java_outer_classname = "OzProto";
+
+package oz_pb;
+
+// A value ID is 64 bits
+
+message Primitive {
+  enum Type {
+    BOOLEAN = 1;
+    INTEGER = 2;
+    NAME = 3;
+    ATOM = 4;
+    STRING = 5;
+    FLOAT = 6;
+    FREE = 7;  // No value associated, or maybe just an ID?
+  }
+  required Type type = 1;
+  optional int64 integer = 2;
+  optional string text = 3;
+  optional bytes data = 4;
+}
+
+message Arity {
+  // Features must be sorted.
+  repeated Primitive feature = 1;
+}
+
+message Record {
+  required Primitive label = 1;
+  optional Arity arity = 2;  // Tuple if unspecified
+  // The values must be ordered according to the record arity.
+  repeated Value value = 3;
+
+//  message Feature {
+//    required Primitive name = 1;
+//    optional Value value = 2;  // This is required, really
+//  }
+}
+
+message List {
+  repeated Value element = 1;
+
+  // Leave unspecified (or set to nil) for a finite list.
+  // Set this value to a free value if this is a stream.
+  // If this is set to another type of value, this is not really a list.
+  optional Value last = 2;
+}
+
+message Value {
+  optional Primitive primitive = 1;
+  optional List list = 2;
+  optional Arity arity = 3;
+  optional Record record = 4;
+}
+
+message NamedValue {
+  required int64 id = 1;
+  required Value value = 2;
+}

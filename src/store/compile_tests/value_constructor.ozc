@@ -1,0 +1,16 @@
+% 'Tests constructing complex/compound values with variables'
+Expected = 'ax(1:[1 1 3 4] y:234)x(1:[1 2 3 4] y:234)b'
+
+Main = 'proc'(
+  code: sequence(
+    call(native:print params:p(a))
+    loop(
+      range: range(var:x 'from':1 to:2)
+      body: 'local'(
+        locals: l(value(x(1:[1 var(x) 3 4] y:234)))
+        'in': call(native:print params: p(var(value)))
+      )
+    )
+    call(native:print params:p(b))
+  )
+)

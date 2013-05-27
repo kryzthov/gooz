@@ -1,0 +1,26 @@
+% Expression using a conditional statement.
+Expected = 'a2b'
+
+Main = 'proc'(
+  code: sequence(
+    call(native:print params:p(a))
+    'local'(
+      locals:l(
+			  a(false)
+			  b(true)
+			  x(
+          conditional(
+            cases: cases(
+              'if'(cond:var(a) 'then':1)
+              'if'(cond:var(b) 'then':2)
+              'if'(cond:true 'then':3)
+            )
+            'else':4
+          )
+        )
+      )
+      'in': call(native:print params:p(var(x)))
+    )
+    call(native:print params:p(b))
+  )
+)

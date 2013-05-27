@@ -1,0 +1,32 @@
+value.h:
+ - Generic value, record and literal interfaces.
+ - Forward declaration of all the value kinds.
+
+values.{h,cc}:
+ - Composite values
+ - OpenRecord, Record, List, Variable, Array, Closure
+
+primitives.{h,cc}:
+ - Boolean, Integer, Name, Float, String
+
+atom.{h,cc}:
+ - Atoms (intern table).
+
+arity.{h,cc}:
+ - Arities (intern table).
+
+thread.{h,cc}:
+ - Threads, registers, operands, stack entries.
+ - Bytecode implementation (switch based).
+
+store.{h,cc}:
+ - Generic store operations: IsDet, Unify, Deref, HasType.
+ - Unify should invoke an object virtual method.
+
+engine.{h,cc}:
+ - An engine manages a list of threads.
+ - Native calls.
+
+bytecode.{h,cc}:
+ - Bytecode instructions and encoding.
+ - Low-level bytecode.

@@ -1,0 +1,45 @@
+% Recursive implementation of factorial.
+Expected = '120'
+
+Factorial = proc(
+	nparams: 1
+  nlocals: 0
+  bytecode: segment(
+    a* := array(size:2 init:_)
+
+    % if (N == 0)
+    a0 := p0
+    call_native(name:is_zero params:a*)
+    branch_if(cond:a0 to:Factorial0)
+
+    % a0 := (N - 1)
+    a0 := p0
+    call_native(name:decrement params:a*)
+
+    % a0 := {Factorial (N - 1)}
+    call(proc:Factorial params:a*)
+
+    % a0 := N * {Factorial (N - 1)}
+    a1 := p0
+    call_native(name:multiply params:a*)
+
+    % return N * {Factorial (N - 1)}
+    p0 := a0
+    return()
+
+  Factorial0:
+    % return 1
+    p0 := 1
+    return()
+  )
+)
+
+Main = proc(
+  nlocals: 1
+  bytecode: segment(
+    l0 := 5
+    call(proc:Factorial params:l*)
+    call_native(name:print params:l*)
+    return()
+  )
+)

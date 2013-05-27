@@ -1,0 +1,22 @@
+% 'Tests the 'local'() statement'
+Expected = '123435'
+
+Main = 'proc'(
+  code: sequence(
+    'local'(
+      locals: l(x(1) y(2))
+      'in': call(native:print params:p(var(x) var(y)))
+    )
+
+    'local'(
+      locals: l(
+        x('local'(locals:l(z(3)) 'in':var(z)))
+        y(sequence(
+          call(native: print params:p(var(x) 4))
+          expr:5
+        ))
+      )
+      'in': call(native:print params:p(var(x) var(y)))
+    )
+  )
+)

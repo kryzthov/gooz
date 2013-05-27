@@ -1,0 +1,21 @@
+proc(
+  params: params(p1 p2 p3)
+  code: sequence(
+    call(proc:var(p1) params:params(val(5) var(p2)))
+    local(
+      locals: l(
+        x
+        y(1)
+				z(call(native:gettime params:p(returned)))
+      )
+      in: call(native:print params:p(var(z)))
+    )
+    conditional(
+      cases: cases(
+        if(cond:true then:call(native:print params:p('coucou')))
+        if(cond:false then:skip)
+      )
+      else: skip
+    )
+  )
+)

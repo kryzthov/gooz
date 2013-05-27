@@ -1,0 +1,9 @@
+Expected = 'x'
+Main = proc(
+  nlocals: 1
+	bytecode: segment(
+    l0 := 'x'
+    call_native(name:print params:l*)
+    return()
+  )
+)

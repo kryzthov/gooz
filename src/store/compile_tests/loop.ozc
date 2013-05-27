@@ -1,0 +1,10 @@
+Expected = '12345'
+
+Main = 'proc'(
+  code: sequence(
+    loop(
+      range: range(var:x 'from':1 to:5)
+      body: call(native: print params: p(var(x)))
+    )
+  )
+)

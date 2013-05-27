@@ -1,0 +1,54 @@
+% 'Tests simple conditional statements'
+Expected = 'a2b3c5de7f9g'
+
+Main = 'proc'(
+  code: sequence(
+    call(native:print params: p(a))
+    conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params: p(1)))
+      )
+      'else':call(native:print params:p(2))
+    )
+
+    call(native:print params: p(b))
+    conditional(
+      cases: cases(
+        'if'(cond:true 'then':call(native:print params: p(3)))
+      )
+      'else':call(native:print params:p(4))
+    )
+
+    call(native:print params: p(c))
+    conditional(
+      cases: cases()
+      'else':call(native:print params:p(5))
+    )
+
+    call(native:print params: p(d))
+    conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params: p(6)))
+      )
+    )
+
+    call(native:print params: p(e))
+    conditional(
+      cases: cases(
+        'if'(cond:true 'then':call(native:print params: p(7)))
+      )
+    )
+
+    call(native:print params: p(f))
+    conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params: p(8)))
+        'if'(cond:true 'then':call(native:print params: p(9)))
+        'if'(cond:false 'then':call(native:print params: p(10)))
+        'if'(cond:true 'then':call(native:print params: p(11)))
+      )
+    )
+
+    call(native:print params: p(g))
+  )
+)

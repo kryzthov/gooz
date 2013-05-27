@@ -1,0 +1,16 @@
+Expected = '13'
+
+Main = 'proc'(
+  code: sequence(
+    'try'(
+      code: sequence(
+        call(native:print params:p(1))
+        'raise'(1)
+        call(native:print params:p(2))
+      )
+      'finally': sequence(
+        call(native:print params:p(3))
+      )
+    )
+  )
+)

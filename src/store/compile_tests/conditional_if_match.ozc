@@ -1,0 +1,112 @@
+% 'Combining simple ifs and pattern matches.'
+Expected = 'a0b1c2d3e3f4g3x'
+
+Main = 'proc'(
+  code:sequence(
+	  call(native:print params:p(a))
+	  conditional(
+      cases: cases(
+        'if'(cond:true 'then':call(native:print params:p(0)))
+        match(value:0
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+            with(pattern:_ 'then':call(native:print params:p(3)))
+          )
+        )
+      )
+      'else':call(native:print params:p(4))
+    )
+
+	  call(native:print params:p(b))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:0
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+            with(pattern:_ 'then':call(native:print params:p(3)))
+          )
+        )
+      )
+      'else':call(native:print params:p(4))
+    )
+
+	  call(native:print params:p(c))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:1
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+            with(pattern:_ 'then':call(native:print params:p(3)))
+          )
+        )
+      )
+      'else':call(native:print params:p(4))
+    )
+
+	  call(native:print params:p(d))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:2
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+            with(pattern:_ 'then':call(native:print params:p(3)))
+          )
+        )
+      )
+      'else':call(native:print params:p(3))
+    )
+
+	  call(native:print params:p(e))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:2
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+          )
+        )
+      )
+      'else':call(native:print params:p(3))
+    )
+
+	  call(native:print params:p(f))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:2
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+          )
+        )
+        'if'(cond:false 'then':call(native:print params:p(3)))
+      )
+      'else':call(native:print params:p(4))
+    )
+
+	  call(native:print params:p(g))
+	  conditional(
+      cases: cases(
+        'if'(cond:false 'then':call(native:print params:p(0)))
+        match(value:2
+				  cases:t(
+            with(pattern:0 'then':call(native:print params:p(1)))
+            with(pattern:1 'then':call(native:print params:p(2)))
+          )
+        )
+        'if'(cond:true 'then':call(native:print params:p(3)))
+      )
+      'else':call(native:print params:p(4))
+    )
+
+	  call(native:print params:p(x))
+  )
+)

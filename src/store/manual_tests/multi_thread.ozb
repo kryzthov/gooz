@@ -1,0 +1,37 @@
+Variable1 = _
+True = _
+
+Thread1 = proc(
+  nlocals: 1
+  bytecode: segment(
+    l0 := 'Testing the value of Variable1'
+    call_native(name:print params:l*)
+
+    branch_if(cond:Variable1 to:Jump)
+
+    l0 := 'Variable1 is false'
+    call_native(name:print params:l*)
+    return()
+  Jump:
+    l0 := 'Variable1 is true'
+    call_native(name:print params:l*)
+    return()
+  )
+)
+
+Thread2 = proc(
+  nlocals: 1
+  bytecode: segment(
+    l0 := Variable1
+    l0 = True
+  )
+)
+
+InfiniteLoop = proc(
+  nlocals: 0
+  bytecode: segment(
+  Loop:
+    call_native(name:print params:p*)
+    branch(to:Loop)
+  )
+)

@@ -1,0 +1,21 @@
+proc(
+  code: sequence(
+    call(native: println params: p('Before condition'))
+    conditional(
+      cases: cases(
+	match(value: x
+	  cases: cases(
+	    with(pattern: 2
+	         then: call(native: println params: p('Match->1')))
+	    with(pattern: x(y:z)
+	         then: call(native: println params: p('Match->x(...)')))
+	    with(pattern: _
+	         then: call(native: println params: p('Match->CatchAll')))
+          )
+	)
+      )
+      else: call(native: println params: p('Else case'))
+    )
+    call(native: println params: p('After condition'))
+  )
+)

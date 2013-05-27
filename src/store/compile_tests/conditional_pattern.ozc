@@ -1,0 +1,68 @@
+% 'Various patterns.'
+Expected = 'a1b1c12d1e2x'
+
+Main = 'proc'(
+  code:sequence(
+    call(native:print params:p(a))
+    conditional(
+      cases: cases(
+        match(value:1
+          cases:t(
+            with(pattern:decl_var(x)
+                 'then':call(native:print params:p(var(x))))
+          )
+        )
+      )
+    )
+
+    call(native:print params:p(b))
+    conditional(
+      cases: cases(
+        match(value:[1]
+          cases:t(
+            with(pattern:[decl_var(x)]
+                 'then':call(native:print params:p(var(x))))
+          )
+        )
+      )
+    )
+
+    call(native:print params:p(c))
+    conditional(
+      cases: cases(
+        match(value:[1 2]
+          cases:t(
+            with(pattern:[decl_var(x) decl_var(y)]
+                 'then':call(native:print params:p(var(x) var(y))))
+          )
+        )
+      )
+    )
+
+    call(native:print params:p(d))
+    conditional(
+      cases: cases(
+        match(value:[1 2]
+          cases:t(
+            with(pattern:[1 _]
+                 'then':call(native:print params:p(1)))
+          )
+        )
+      )
+    )
+
+    call(native:print params:p(e))
+    conditional(
+      cases: cases(
+        match(value:[[1 2] 3]
+          cases:t(
+            with(pattern:[[_ decl_var(x)] _]
+                 'then':call(native:print params:p(var(x))))
+          )
+        )
+      )
+    )
+
+    call(native:print params:p(x))
+  )
+)

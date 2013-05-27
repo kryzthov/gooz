@@ -1,0 +1,46 @@
+% Iterative implementation of factorial.
+Expected = '120'
+
+Factorial = proc(
+  nparams: 1
+  nlocals: 2
+  bytecode: segment(
+    a* := array(size:2 init:_)
+
+	  % accumulator
+    l0 := 1
+
+		% counter from N down to 0
+    l1 := p0
+
+	 Loop:
+    % if l1 == 0: goto End
+    a0 := l1
+    call_native(name:'is_zero' params:a*)
+    branch_if(cond:a0 to:End)
+
+    % l0 := l0 * l1
+    call_native(name:'multiply' params:l*)
+
+    % l1 := l1 - 1
+    a0 := l1
+    call_native(name:'decrement' params:a*)
+    l1 := a0
+
+    branch(to:Loop)
+
+   End:
+    p0 := l0
+    return()
+  )
+)
+
+Main = proc(
+  nlocals: 1
+  bytecode: segment(
+    l0 := 5
+    call(proc:Factorial params:l*)
+    call_native(name:print params:l*)
+    return()
+  )
+)
