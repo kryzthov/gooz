@@ -380,6 +380,16 @@ TEST_F(OzParserTest, Functor_1) {
   CHECK(Init("functor F end"));
 }
 
+TEST_F(OzParserTest, Functor_2) {
+  CHECK(Init(
+      "functor F\n"
+      "export skip\n"
+      "import skip\n"
+      "define skip\n"
+      "end"
+  ));
+}
+
 TEST_F(OzParserTest, Fun_1) {
   CHECK(Init("fun {F} nil end"));
 }
