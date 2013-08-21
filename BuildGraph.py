@@ -1,10 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- mode: python -*-
 # -*- encoding: utf8 -*-
 
 """Direct acyclic graph of build targets."""
 
 from abc import ABCMeta, abstractmethod
+import logging
 import threading
 
 import Misc as misc
@@ -65,11 +66,12 @@ class TargetNode(object):
     try:
       for dep_node in self.direct_dep_nodes:
         if dep_node.WaitUntilCompleted() != TargetNode.BUILD_SUCCESS:
-          print('Dependency failure: %s -> %s.' % (self.name, dep_node.name))
+          logging.info(
+              'Dependency failure: %s -> %s.', self.name, dep_node.name)
           raise BuildFailure()
       self._status = self._Build(env)
     except Error as exn:
-      print('Error building target %r: %r' % (self.name, exn))
+      logging.info('Error building target %r: %r', self.name, exn)
       self._status = TargetNode.BUILD_FAILURE
     finally:
       self._completed.set()
@@ -272,7 +274,7 @@ class TargetGraph(object):
 
   def DeclareObject(self, name, source, dependencies=tuple()):
     """Declares an object node."""
-    print('Object node: %s (%s)' % (name, source))
+    logging.debug('Object node: %s (%s)', name, source)
     object_node = ObjectNode(graph=self,
                              name=name,
                              source=source,
@@ -424,7 +426,7 @@ class TargetGraph(object):
     """Dumps the target graph."""
     for target_name in self.TopologicalSort():
       target = self._nodes[target_name]
-      print('%s: %s' % (target_name, ','.join(target.direct_dep_names)))
+      logging.debug('%s: [%s]', target_name, ','.join(target.direct_dep_names))
 
 
 def ParseConfig(target_graph, config_file_path):

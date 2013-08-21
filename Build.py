@@ -319,10 +319,10 @@ class Environment(object):
     self._metadata = Metadata(self._metadata_file)
     self._metadata.ReadFromFile()
 
-    print('Base directory: %s' % self._base_dir)
-    print('Source directory: %s' % self._source_dir)
-    print('Output directory: %s' % self._output_dir)
-    print('Metadata file: %s' % self._metadata_file)
+    logging.info('Base directory: %s', self._base_dir)
+    logging.info('Source directory: %s', self._source_dir)
+    logging.info('Output directory: %s', self._output_dir)
+    logging.info('Metadata file: %s', self._metadata_file)
 
     # ----------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ class Environment(object):
 
     self.vars.CXX_COMPILER = FindGCC()
     #CXX_COMPILER = '/usr/bin/clang'
-    print('Using gcc: %s' % self.vars.CXX_COMPILER)
+    logging.info('Using gcc: %s', self.vars.CXX_COMPILER)
 
     self.vars.CXX_COMPILER_COMMAND = [self.vars.CXX_COMPILER]
     if FLAGS.use_distcc:
@@ -502,7 +502,7 @@ class Environment(object):
         ]
       + self.vars.PROTO_COMPILER_FLAGS
       + [ proto_source.apath ])
-    print('Compiling proto: %s' % source)
+    logging.info('Compiling proto: %s', source)
     self.Exec(command)
 
   def CompileCC(self, source_ppath):
@@ -519,7 +519,7 @@ class Environment(object):
     source_ppaths.update(self.GetCCIncludesClosure(source_ppath))
     target_ppaths = [ object_ppath ]
     if self.IsUpToDate(source_ppaths, target_ppaths):
-      print('%s -> %s is up to date' % (source_ppath, object_ppath))
+      logging.info('%s -> %s is up to date', source_ppath, object_ppath)
       return
 
     misc.MakeDirectoriesFor(object_apath)
@@ -531,7 +531,7 @@ class Environment(object):
           '-c', source_apath,
           '-o', object_apath,
           ])
-    print('Compiling C++: %s' % source_ppath)
+    logging.info('Compiling C++: %s', source_ppath)
     self.Exec(command)
 
     self.RecordMetadata(source_ppaths, target_ppaths)
@@ -552,14 +552,14 @@ class Environment(object):
     object_apaths = [os.path.join(self._output_dir, ppath)
                      for ppath in object_ppaths]
     if self.IsUpToDate(object_ppaths, [library_ppath]):
-      print('%s is up to date' % library_ppath)
+      logging.info('%s is up to date', library_ppath)
       return
     for object_apath in object_apaths:
       assert os.path.exists(object_apath), (
         'Cannot find object: %s' % object_apath)
     command = ([self.vars.AR, 'rc', library_apath]
                + object_apaths)
-    print('Building library: %s' % library_ppath)
+    logging.info('Building library: %s', library_ppath)
     self.Exec(command)
 
     assert os.path.exists(library_apath)
@@ -588,7 +588,7 @@ class Environment(object):
     source_ppaths = list(object_ppaths) + library_ppaths
     target_ppaths = [ program_ppath ]
     if self.IsUpToDate(source_ppaths, target_ppaths):
-      print('Program %s is up to date' % program_ppath)
+      logging.info('Program %s is up to date', program_ppath)
       return
 
     for object_apath in object_apaths:
@@ -606,7 +606,7 @@ class Environment(object):
       + library_apaths
       + link_flags
     )
-    print('Linking binary: %s' % program_ppath)
+    logging.info('Linking binary: %s', program_ppath)
     self.Exec(command)
 
     self.RecordMetadata(source_ppaths, target_ppaths)
@@ -652,7 +652,7 @@ class Worker(object):
         job = self._queue.get_nowait()
         self._process(job)
     except queue.Empty:
-      print('Worker done')
+      logging.info('Worker done')
 
 
 def WorkerPool(queue, process, nworkers):
@@ -700,7 +700,7 @@ class Build(Action):
         q.put_nowait(target)
 
       def BuildTarget(target):
-        print('Building %s' % target.name)
+        logging.info('Building %s', target.name)
         target.Build(self.env)
 
       WorkerPool(q, BuildTarget, FLAGS.ncpu + 1)
@@ -718,15 +718,16 @@ FLAGS.AddString(
 )
 
 def Main(args):
-  logging.info('Base directory: %s' % FLAGS.base_dir)
-  logging.info('Using %d CPUs' % FLAGS.ncpu)
+  logging.info('Base directory: %s', FLAGS.base_dir)
+  logging.info('Using %d CPUs', FLAGS.ncpu)
 
   do = FLAGS.do
   if (do is None) and (len(args) > 0):
     do = args[0]
     args = args[1:]
 
-  action_map = dict(map(lambda k: (k.__name__, k), Action.__subclasses__()))
+  action_map = dict(map(lambda k: (k.__name__.lower(), k),
+                        Action.__subclasses__()))
   action_class = action_map.get(do)
   if action_class is None:
     logging.error(
