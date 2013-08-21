@@ -190,6 +190,12 @@ class DumpVisitor : public AbstractOzNodeVisitor {
     // TODO
   }
 
+  virtual void Visit(OzNodeForLoop* node) {
+    Node n(this, "OzNodeForLoop");
+    Indent() << "body:"; node->body->AcceptVisitor(this);
+    // TODO
+  }
+
   virtual void Visit(OzNodeRaise* node) {
     Node n(this, "OzNodeRaise");
     Indent() << "exn:"; node->exn->AcceptVisitor(this);

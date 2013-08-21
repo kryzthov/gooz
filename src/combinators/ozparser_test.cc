@@ -458,15 +458,24 @@ TEST_F(OzParserTest, Thread) {
   CHECK(Init("thread X end"));
 }
 
+TEST_F(OzParserTest, ThreadIn) {
+  CHECK(Init("thread X in Y end"));
+}
+
 TEST_F(OzParserTest, Raise) {
   CHECK(Init("raise X end"));
 }
 
-// TEST_F(OzParserTest, TryEnd) {
-//   if (Init("try X end")) {
-//     FAIL();
-//   }
-// }
+TEST_F(OzParserTest, RaiseIn) {
+  CHECK(Init("raise X in Y end"));
+}
+
+TEST_F(OzParserTest, TryEnd) {
+  if (Init("try X end")) {
+    // Must have either catch or finally
+    FAIL();
+  }
+}
 
 TEST_F(OzParserTest, TryCatch) {
   CHECK(Init("try X catch Y then Z end"));
@@ -475,5 +484,55 @@ TEST_F(OzParserTest, TryCatch) {
 TEST_F(OzParserTest, TryFinally) {
   CHECK(Init("try X finally Z end"));
 }
+
+TEST_F(OzParserTest, Lock) {
+  CHECK(Init("lock X then Y end"));
+}
+
+TEST_F(OzParserTest, LockNoThen) {
+  if (Init("lock X end")) {
+    // Must have 'then'
+    FAIL();
+  }
+}
+
+TEST_F(OzParserTest, LockIn) {
+  CHECK(Init("lock X then Y in Z end"));
+}
+
+TEST_F(OzParserTest, Local) {
+  CHECK(Init("local X end"));
+}
+
+TEST_F(OzParserTest, LocalIn) {
+  CHECK(Init("local X in Y end"));
+}
+
+TEST_F(OzParserTest, LocalParen) {
+  CHECK(Init("(X)"));
+}
+
+TEST_F(OzParserTest, LocalParenIn) {
+  CHECK(Init("(X in Y)"));
+}
+
+TEST_F(OzParserTest, For) {
+  CHECK(Init("for X in Y do Z end"));
+}
+
+TEST_F(OzParserTest, ForNoDo) {
+  if (Init("for X end")) {
+    // Must have a 'do'
+    FAIL();
+  }
+}
+
+TEST_F(OzParserTest, ForNoIn) {
+  if (Init("for X do Y end")) {
+    // Must have an 'in'
+    FAIL();
+  }
+}
+
 
 }}  // namespace combinators::oz

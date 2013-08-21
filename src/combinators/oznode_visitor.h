@@ -67,15 +67,32 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeCond* node) {
+    for (auto branch : node->branches) {
+      branch->AcceptVisitor(this);
+    }
+    if (node->else_branch != nullptr) {
+      node->else_branch->AcceptVisitor(this);
+    }
   }
 
   virtual void Visit(OzNodeCondBranch* node) {
+    node->condition->AcceptVisitor(this);
+    node->body->AcceptVisitor(this);
   }
 
   virtual void Visit(OzNodePatternMatch* node) {
+    node->value->AcceptVisitor(this);
+    for (auto branch : node->branches) {
+      branch->AcceptVisitor(this);
+    }
   }
 
   virtual void Visit(OzNodePatternBranch* node) {
+    node->pattern->AcceptVisitor(this);
+    if (node->condition != nullptr) {
+      node->condition->AcceptVisitor(this);
+    }
+    node->body->AcceptVisitor(this);
   }
 
   virtual void Visit(OzNodeThread* node) {
@@ -83,6 +100,7 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeClass* node) {
+    LOG(FATAL) << "Not implemented";
   }
 
   virtual void Visit(OzNodeLock* node) {
@@ -91,6 +109,11 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeLoop* node) {
+    node->body->AcceptVisitor(this);
+  }
+
+  virtual void Visit(OzNodeForLoop* node) {
+    // TODO: Complete?
     node->body->AcceptVisitor(this);
   }
 

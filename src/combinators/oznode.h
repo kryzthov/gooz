@@ -44,6 +44,7 @@ class OzNodeRaise;
 class OzNodeTry;
 
 class OzNodeLoop;
+class OzNodeForLoop;
 
 class OzNodeLock;
 
@@ -80,6 +81,7 @@ class AbstractOzNodeVisitor {
   virtual void Visit(OzNodeTry* node) = 0;
 
   virtual void Visit(OzNodeLoop* node) = 0;
+  virtual void Visit(OzNodeForLoop* node) = 0;
 
   virtual void Visit(OzNodeLock* node) = 0;
 
@@ -444,6 +446,7 @@ class OzNodeRaise : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// Infinite loop
 class OzNodeLoop : public AbstractOzNode {
  public:
   OzNodeLoop() {
@@ -454,8 +457,26 @@ class OzNodeLoop : public AbstractOzNode {
     visitor->Visit(this);
   }
 
-  // TODO: Define
-  shared_ptr<OzNodeGeneric> body;
+  shared_ptr<AbstractOzNode> body;
+};
+
+// -----------------------------------------------------------------------------
+
+// For loop
+class OzNodeForLoop : public AbstractOzNode {
+ public:
+  OzNodeForLoop() {
+    type = OzLexemType::FOR;
+  }
+
+  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
+    visitor->Visit(this);
+  }
+
+  // TODO: loop declaration???
+  shared_ptr<AbstractOzNode> var;
+  shared_ptr<AbstractOzNode> spec;
+  shared_ptr<AbstractOzNode> body;
 };
 
 // -----------------------------------------------------------------------------
@@ -470,8 +491,8 @@ class OzNodeLock : public AbstractOzNode {
     visitor->Visit(this);
   }
 
-  shared_ptr<OzNodeGeneric> lock;
-  shared_ptr<OzNodeGeneric> body;
+  shared_ptr<AbstractOzNode> lock;
+  shared_ptr<AbstractOzNode> body;
 };
 
 // -----------------------------------------------------------------------------

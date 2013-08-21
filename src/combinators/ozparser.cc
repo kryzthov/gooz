@@ -69,7 +69,10 @@ struct OzSchema {
   vector<OzLexemType> cond_case_branches;
   vector<OzLexemType> cond_if_branches;
   vector<OzLexemType> functor_branches;
+  vector<OzLexemType> for_branches;
+  vector<OzLexemType> for_decl_branches;
   vector<OzLexemType> local_branches;
+  vector<OzLexemType> lock_branches;
   vector<OzLexemType> try_branches;
 
   OzSchema() {
@@ -81,6 +84,8 @@ struct OzSchema {
 
     local_branches.push_back(OzLexemType::IN);
 
+    lock_branches.push_back(OzLexemType::THEN);
+
     cond_branches.push_back(OzLexemType::ELSEIF);
     cond_branches.push_back(OzLexemType::ELSECASE);
     cond_branches.push_back(OzLexemType::ELSE);
@@ -89,6 +94,9 @@ struct OzSchema {
 
     cond_case_branches.push_back(OzLexemType::OF);
     cond_case_branches.push_back(OzLexemType::ELSEOF);
+
+    for_branches.push_back(OzLexemType::DO);
+    for_decl_branches.push_back(OzLexemType::IN);
 
     functor_branches.push_back(OzLexemType::EXPORT);
     functor_branches.push_back(OzLexemType::REQUIRE);
@@ -367,6 +375,75 @@ MidLevelScopeParser::ParseCaseBranch(shared_ptr<OzNodeGeneric>& root) {
 }
 
 shared_ptr<AbstractOzNode>
+MidLevelScopeParser::ParseLock(shared_ptr<OzNodeGeneric>& root) {
+  shared_ptr<OzNodeLock> lock(new OzNodeLock);
+
+  vector<int> edge_pos;
+  SplitNodes(root->nodes, kOzSchema.lock_branches, &edge_pos);
+
+  if (edge_pos.size() != 1) {
+    return shared_ptr<AbstractOzNode>(
+        &OzNodeError::New()
+        .SetNode(root)
+        .SetError("Invalid lock, requires exactly one 'then' separator"));
+  }
+
+  const int then_pos = edge_pos[0];
+  shared_ptr<OzNodeGeneric> lock_expr(OzNodeSlice(root->nodes, 0, then_pos));
+  shared_ptr<OzNodeGeneric> body(
+      OzNodeSlice(root->nodes, then_pos + 1, root->nodes.size()));
+  if (expr_parser_ != nullptr) expr_parser_->Parse(lock_expr.get());
+
+  lock->lock = lock_expr;
+  lock->body = ParseLocal(body);
+
+  return lock;
+}
+
+shared_ptr<AbstractOzNode>
+MidLevelScopeParser::ParseForLoop(shared_ptr<OzNodeGeneric>& root) {
+  shared_ptr<OzNodeForLoop> loop(new OzNodeForLoop);
+
+  vector<int> edge_pos;
+  SplitNodes(root->nodes, kOzSchema.for_branches, &edge_pos);
+
+  if (edge_pos.size() != 1) {
+    return shared_ptr<AbstractOzNode>(
+        &OzNodeError::New()
+        .SetNode(root)
+        .SetError("Invalid for, requires exactly one 'do' separator"));
+  }
+
+  const int do_pos = edge_pos[0];
+  shared_ptr<OzNodeGeneric> decl(OzNodeSlice(root->nodes, 0, do_pos));
+  shared_ptr<OzNodeGeneric> body(
+      OzNodeSlice(root->nodes, do_pos + 1, root->nodes.size()));
+
+  // Parse the for loop declaration:
+  edge_pos.clear();
+  SplitNodes(decl->nodes, kOzSchema.for_decl_branches, &edge_pos);
+
+  if (edge_pos.size() != 1) {
+    return shared_ptr<AbstractOzNode>(
+        &OzNodeError::New()
+        .SetNode(root)
+        .SetError("Invalid for spec, requires exactly one 'in' separator"));
+  }
+
+  const int in_pos = edge_pos[0];
+  shared_ptr<OzNodeGeneric> var_decl(OzNodeSlice(decl->nodes, 0, in_pos));
+  shared_ptr<OzNodeGeneric> loop_spec(
+      OzNodeSlice(decl->nodes, in_pos + 1, decl->nodes.size()));
+
+  // TODO: Parse declaration properly
+  loop->var = var_decl;
+  loop->spec = loop_spec;
+  loop->body = ParseLocal(body);
+
+  return loop;
+}
+
+shared_ptr<AbstractOzNode>
 MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
   VLOG(2) << __PRETTY_FUNCTION__ << " on root node:\n" << *root;
 
@@ -382,8 +459,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
     }
 
     case OzLexemType::LOCK: {
-      LOG(FATAL) << "Not implemented";
-      break;
+      return ParseLock(root);
     }
 
     case OzLexemType::FUNCTOR: {
@@ -445,8 +521,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
     }
 
     case OzLexemType::FOR: {
-      LOG(FATAL) << "Not implemented";
-      break;
+      return ParseForLoop(root);
     }
 
     case OzLexemType::IF:
@@ -540,16 +615,15 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
     case OzLexemType::TOP_LEVEL:
     case OzLexemType::CALL_BEGIN:
     case OzLexemType::LIST_BEGIN:
-    case OzLexemType::BEGIN_RECORD_FEATURES:
+    case OzLexemType::BEGIN_RECORD_FEATURES: {
       expr_parser_->Parse(root.get());
       return root;
+    }
 
     default:
       LOG(FATAL) << "unhandled case " << root->type;
   }
-
-  LOG(WARNING) << "not implemented: " << root->type;
-  return root;
+  LOG(FATAL) << "dead code";
 }
 
 // -----------------------------------------------------------------------------

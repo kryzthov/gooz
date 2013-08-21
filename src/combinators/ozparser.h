@@ -73,11 +73,12 @@ class MidLevelScopeParser {
 
  private:
   shared_ptr<AbstractOzNode> ParseLocal(shared_ptr<OzNodeGeneric>& root);
+  shared_ptr<AbstractOzNode> ParseLock(shared_ptr<OzNodeGeneric>& root);
   shared_ptr<AbstractOzNode> ParseIfBranch(shared_ptr<OzNodeGeneric>& root,
                                            bool pattern);
   shared_ptr<AbstractOzNode> ParseCaseBranch(shared_ptr<OzNodeGeneric>& root);
-
   shared_ptr<AbstractOzNode> ParseTry(shared_ptr<OzNodeGeneric>& root);
+  shared_ptr<AbstractOzNode> ParseForLoop(shared_ptr<OzNodeGeneric>& root);
 
   unique_ptr<ExpressionParser> expr_parser_;
 };

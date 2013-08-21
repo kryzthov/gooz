@@ -224,6 +224,10 @@ class EvalVisitor : public AbstractOzNodeVisitor {
     LOG(FATAL) << "Cannot evaluate loops";
   }
 
+  virtual void Visit(OzNodeForLoop* node) {
+    LOG(FATAL) << "Cannot evaluate loops";
+  }
+
   virtual void Visit(OzNodeLock* node) {
     LOG(FATAL) << "Cannot evaluate locks";
   }
