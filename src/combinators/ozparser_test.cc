@@ -143,8 +143,8 @@ TEST_F(MidLevelScopeParserTest, Local_1) {
 
   EXPECT_EQ(OzLexemType::TOP_LEVEL, root.type);
   EXPECT_EQ(1UL, root.nodes.size());
-  const OzNodeGeneric& node = dynamic_cast<OzNodeGeneric&>(*root.nodes[0]);
-  EXPECT_EQ(OzLexemType::BEGIN, node.type);
+  const OzNodeSequence& node = dynamic_cast<OzNodeSequence&>(*root.nodes[0]);
+  EXPECT_EQ(OzLexemType::NODE_SEQUENCE, node.type);
   EXPECT_EQ(1UL, node.nodes.size());
 }
 
@@ -159,8 +159,8 @@ TEST_F(MidLevelScopeParserTest, Local_2) {
   EXPECT_EQ(1UL, root.nodes.size());
   const OzNodeLocal& node = dynamic_cast<OzNodeLocal&>(*root.nodes[0]);
   EXPECT_EQ(OzLexemType::NODE_LOCAL, node.type);
-  EXPECT_EQ(1UL, node.defs->nodes.size());
-  EXPECT_EQ(1UL, node.body->nodes.size());
+  EXPECT_EQ(1UL, std::static_pointer_cast<OzNodeSequence>(node.defs)->nodes.size());
+  EXPECT_EQ(1UL, std::static_pointer_cast<OzNodeSequence>(node.body)->nodes.size());
 }
 
 // -----------------------------------------------------------------------------
@@ -398,12 +398,28 @@ TEST_F(OzParserTest, Fun_2) {
   CHECK(Init("fun {F X} nil end"));
 }
 
+TEST_F(OzParserTest, Fun_3) {
+  CHECK(Init("fun {$ X Y} unit end"));
+}
+
 TEST_F(OzParserTest, Proc_1) {
   CHECK(Init("proc {P} skip end"));
 }
 
 TEST_F(OzParserTest, Proc_2) {
   CHECK(Init("proc {P X} skip end"));
+}
+
+TEST_F(OzParserTest, Proc_3) {
+  CHECK(Init("proc {$ X Y Z} skip end"));
+}
+
+TEST_F(OzParserTest, ProcNested) {
+  const string def =
+      "proc {P}\n"
+      "  proc {Q} skip end\n"
+      "end\n";
+  CHECK(Init(def));
 }
 
 TEST_F(OzParserTest, CondIf_1) {
@@ -477,12 +493,23 @@ TEST_F(OzParserTest, TryEnd) {
   }
 }
 
+TEST_F(OzParserTest, TryTooMany) {
+  if (Init("try X catch Y catch Z finally T end")) {
+    // Must have at most 1 catch and 1 finally
+    FAIL();
+  }
+}
+
 TEST_F(OzParserTest, TryCatch) {
   CHECK(Init("try X catch Y then Z end"));
 }
 
 TEST_F(OzParserTest, TryFinally) {
   CHECK(Init("try X finally Z end"));
+}
+
+TEST_F(OzParserTest, TryCatchFinally) {
+  CHECK(Init("try X catch Y then T finally Z end"));
 }
 
 TEST_F(OzParserTest, Lock) {
@@ -532,6 +559,17 @@ TEST_F(OzParserTest, ForNoIn) {
     // Must have an 'in'
     FAIL();
   }
+}
+
+// -----------------------------------------------------------------------------
+
+TEST_F(OzParserTest, Factorial) {
+  const string def =
+      "fun {Factorial N}\n"
+      "  if (N =< 1) then 1 else N * {Factorial (N - 1)} end\n"
+      "end\n";
+
+  CHECK(Init(def));
 }
 
 

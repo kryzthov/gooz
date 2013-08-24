@@ -120,6 +120,8 @@ enum class OzLexemType {
     NODE_RAISE,
     NODE_LOOP,
     NODE_LOCK,
+
+    NODE_SEQUENCE,
 };
 
 string OzLexemTypeStr(OzLexemType type);

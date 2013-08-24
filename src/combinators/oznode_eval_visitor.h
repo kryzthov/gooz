@@ -244,6 +244,10 @@ class EvalVisitor : public AbstractOzNodeVisitor {
     LOG(FATAL) << "Cannot evaluate class";
   }
 
+  virtual void Visit(OzNodeSequence* node) {
+    LOG(FATAL) << "Cannot evaluate sequence";
+  }
+
   store::Value value() const { return value_; }
 
   const UnorderedMap<string, store::Value>& vars() const { return vars_; }

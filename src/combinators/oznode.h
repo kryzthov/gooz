@@ -48,6 +48,8 @@ class OzNodeForLoop;
 
 class OzNodeLock;
 
+class OzNodeSequence;
+
 // -----------------------------------------------------------------------------
 
 class AbstractOzNodeVisitor {
@@ -85,13 +87,15 @@ class AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeLock* node) = 0;
 
+  virtual void Visit(OzNodeSequence* node) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AbstractOzNodeVisitor);
 };
 
 // -----------------------------------------------------------------------------
 
-// Base node wrapping a single lexical element.
+// Abstract base class for all AST nodes.
 class AbstractOzNode {
  public:
   AbstractOzNode()
@@ -121,6 +125,7 @@ class AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node wrapping a single lexical element.
 class OzNode : public AbstractOzNode {
  public:
   OzNode() : AbstractOzNode() {
@@ -137,7 +142,7 @@ class OzNode : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
-// Generic container node, wrapping a sequence of nodes.
+// AST node representing a sequence of nodes.
 class OzNodeGeneric : public AbstractOzNode {
  public:
   OzNodeGeneric() {}
@@ -197,6 +202,7 @@ class OzNodeError : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node representing a symbolic variable.
 class OzNodeVar : public AbstractOzNode {
  public:
   OzNodeVar() {}
@@ -221,6 +227,7 @@ class OzNodeVar : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node describing a record.
 class OzNodeRecord : public AbstractOzNode {
  public:
   OzNodeRecord()
@@ -240,6 +247,7 @@ class OzNodeRecord : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node representing a unary expression.
 class OzNodeUnaryOp : public AbstractOzNode {
  public:
   virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
@@ -252,6 +260,7 @@ class OzNodeUnaryOp : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node representing a binary expression.
 class OzNodeBinaryOp : public AbstractOzNode {
  public:
   virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
@@ -264,6 +273,7 @@ class OzNodeBinaryOp : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node representing a n-ary expression.
 class OzNodeNaryOp : public AbstractOzNode {
  public:
   virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
@@ -276,6 +286,7 @@ class OzNodeNaryOp : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a functor declaration.
 class OzNodeFunctor : public AbstractOzNode {
  public:
   OzNodeFunctor() {
@@ -296,6 +307,7 @@ class OzNodeFunctor : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a local scope.
 class OzNodeLocal : public AbstractOzNode {
  public:
   OzNodeLocal() {
@@ -309,11 +321,13 @@ class OzNodeLocal : public AbstractOzNode {
     visitor->Visit(this);
   }
 
-  shared_ptr<OzNodeGeneric> defs, body;
+  shared_ptr<AbstractOzNode> defs;
+  shared_ptr<AbstractOzNode> body;
 };
 
 // -----------------------------------------------------------------------------
 
+// AST node for a procedure or function definition.
 class OzNodeProc : public AbstractOzNode {
  public:
   OzNodeProc() {
@@ -331,6 +345,7 @@ class OzNodeProc : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a class definition.
 class OzNodeClass : public AbstractOzNode {
  public:
   OzNodeClass() {
@@ -346,6 +361,7 @@ class OzNodeClass : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a thread definition.
 class OzNodeThread : public AbstractOzNode {
  public:
   OzNodeThread() {
@@ -394,10 +410,11 @@ class OzNodePatternMatch : public AbstractOzNode {
     visitor->Visit(this);
   }
 
-  shared_ptr<AbstractOzNode> value;
+  shared_ptr<AbstractOzNode> value;  // null in exn catch statements.
   vector<shared_ptr<AbstractOzNode> > branches;
 };
 
+// AST node for branching (if/case).
 class OzNodeCond : public AbstractOzNode {
  public:
   OzNodeCond() {}
@@ -414,6 +431,7 @@ class OzNodeCond : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for exception handling statements try/catch/finally.
 class OzNodeTry : public AbstractOzNode {
  public:
   OzNodeTry() {
@@ -425,12 +443,13 @@ class OzNodeTry : public AbstractOzNode {
   }
 
   shared_ptr<AbstractOzNode> body;
-  shared_ptr<AbstractOzNode> catches;
-  shared_ptr<AbstractOzNode> finally;
+  shared_ptr<AbstractOzNode> catches;  // may be null or OzNodePatternMatch
+  shared_ptr<AbstractOzNode> finally;  // may be null
 };
 
 // -----------------------------------------------------------------------------
 
+// AST node for a raise statement.
 class OzNodeRaise : public AbstractOzNode {
  public:
   OzNodeRaise() {
@@ -446,7 +465,7 @@ class OzNodeRaise : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
-// Infinite loop
+// AST node for an infinite loop.
 class OzNodeLoop : public AbstractOzNode {
  public:
   OzNodeLoop() {
@@ -462,7 +481,7 @@ class OzNodeLoop : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
-// For loop
+// AST node for a 'for' loop definition.
 class OzNodeForLoop : public AbstractOzNode {
  public:
   OzNodeForLoop() {
@@ -481,6 +500,7 @@ class OzNodeForLoop : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a lock statement.
 class OzNodeLock : public AbstractOzNode {
  public:
   OzNodeLock() {
@@ -493,6 +513,33 @@ class OzNodeLock : public AbstractOzNode {
 
   shared_ptr<AbstractOzNode> lock;
   shared_ptr<AbstractOzNode> body;
+};
+
+// -----------------------------------------------------------------------------
+
+// AST node for a sequence of instructions.
+class OzNodeSequence : public AbstractOzNode {
+ public:
+  OzNodeSequence() {
+    type = OzLexemType::NODE_SEQUENCE;
+  }
+
+  OzNodeSequence(const OzLexemStream& stream)
+      : AbstractOzNode(stream) {
+    type = OzLexemType::NODE_SEQUENCE;
+  }
+
+  OzNodeSequence(const OzNodeGeneric& node)
+      : AbstractOzNode(node),
+        nodes(node.nodes) {
+    type = OzLexemType::NODE_SEQUENCE;
+  }
+
+  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
+    visitor->Visit(this);
+  }
+
+  vector<shared_ptr<AbstractOzNode> > nodes;
 };
 
 // -----------------------------------------------------------------------------

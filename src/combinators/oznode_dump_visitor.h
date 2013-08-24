@@ -155,7 +155,11 @@ class DumpVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodePatternMatch* node) {
     Node n(this, "OzNodePatternMatch");
-    Indent() << "value:"; node->value->AcceptVisitor(this);
+    if (node->value != nullptr) {
+      Indent() << "value:"; node->value->AcceptVisitor(this);
+    } else {
+      Indent() << "value: caught-exception";
+    }
     Indent() << "branches:"; NewLine();
     level_++;
     int i = 1;
@@ -187,13 +191,14 @@ class DumpVisitor : public AbstractOzNodeVisitor {
   virtual void Visit(OzNodeLoop* node) {
     Node n(this, "OzNodeLoop");
     Indent() << "body:"; node->body->AcceptVisitor(this);
-    // TODO
+    // TODO: more things to dump?
   }
 
   virtual void Visit(OzNodeForLoop* node) {
     Node n(this, "OzNodeForLoop");
+    Indent() << "var:"; node->var->AcceptVisitor(this);
+    Indent() << "spec:"; node->spec->AcceptVisitor(this);
     Indent() << "body:"; node->body->AcceptVisitor(this);
-    // TODO
   }
 
   virtual void Visit(OzNodeRaise* node) {
@@ -216,6 +221,15 @@ class DumpVisitor : public AbstractOzNodeVisitor {
     Node n(this, "OzNodeLock");
     Indent() << "lock:"; node->lock->AcceptVisitor(this);
     Indent() << "body:"; node->body->AcceptVisitor(this);
+  }
+
+  virtual void Visit(OzNodeSequence* node) {
+    Node n(this, "OzNodeSequence");
+    Indent() << "nodes:";
+    int i = 1;
+    for (shared_ptr<AbstractOzNode> step : node->nodes) {
+      Indent() << "node" << i++ << ":"; step->AcceptVisitor(this);
+    }
   }
 
  private:

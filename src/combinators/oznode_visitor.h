@@ -81,7 +81,7 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodePatternMatch* node) {
-    node->value->AcceptVisitor(this);
+    if (node->value != nullptr) node->value->AcceptVisitor(this);
     for (auto branch : node->branches) {
       branch->AcceptVisitor(this);
     }
@@ -125,6 +125,12 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeRaise* node) {
     node->exn->AcceptVisitor(this);
+  }
+
+  virtual void Visit(OzNodeSequence* node) {
+    for (auto step : node->nodes) {
+      step->AcceptVisitor(this);
+    }
   }
 
  private:

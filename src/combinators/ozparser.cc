@@ -229,14 +229,6 @@ void SplitNodes(const vector<shared_ptr<AbstractOzNode> >& nodes,
 
 // -----------------------------------------------------------------------------
 
-MidLevelScopeParser::MidLevelScopeParser()
-    : expr_parser_(new ExpressionParser) {
-}
-
-MidLevelScopeParser::MidLevelScopeParser(ExpressionParser* expr_parser)
-    : expr_parser_(expr_parser) {
-}
-
 // Makes a slice of Oz nodes: nodes[begin ... end[
 OzNodeGeneric* OzNodeSlice(const vector<shared_ptr<AbstractOzNode> >& nodes,
                            int ibegin, int iend) {
@@ -248,24 +240,41 @@ OzNodeGeneric* OzNodeSlice(const vector<shared_ptr<AbstractOzNode> >& nodes,
   return generic;
 }
 
+// -----------------------------------------------------------------------------
+
+MidLevelScopeParser::MidLevelScopeParser()
+    : expr_parser_(new ExpressionParser) {
+}
+
+MidLevelScopeParser::MidLevelScopeParser(ExpressionParser* expr_parser)
+    : expr_parser_(expr_parser) {
+}
+
+shared_ptr<AbstractOzNode>
+MidLevelScopeParser::ParseSequence(
+    shared_ptr<OzNodeGeneric>& root,
+    int ibegin,
+    int iend) {
+  OzNodeGeneric* const slice = OzNodeSlice(root->nodes, ibegin, iend);
+  if (expr_parser_ != nullptr) expr_parser_->Parse(slice);
+
+  OzNodeSequence* const sequence = new OzNodeSequence(*slice);
+  return shared_ptr<AbstractOzNode>(sequence);
+}
+
 shared_ptr<AbstractOzNode>
 MidLevelScopeParser::ParseLocal(shared_ptr<OzNodeGeneric>& root) {
   vector<int> edge_pos;
   SplitNodes(root->nodes, kOzSchema.local_branches, &edge_pos);
 
+  // TODO: This should probably always normalize to OzNodeLocal instead
   switch(edge_pos.size()) {
-    case 0: return root;
+    case 0: return ParseSequence(root, 0, root->nodes.size());
     case 1: {
       const int in_pos = edge_pos[0];
       shared_ptr<OzNodeLocal> local(new OzNodeLocal(*root));
-      local->defs.reset(OzNodeSlice(root->nodes, 0, in_pos));
-      local->body.reset(
-          OzNodeSlice(root->nodes, in_pos + 1, root->nodes.size()));
-
-      if (expr_parser_ != nullptr) {
-        expr_parser_->Parse(local->defs.get());
-        expr_parser_->Parse(local->body.get());
-      }
+      local->defs = ParseSequence(root, 0, in_pos);
+      local->body = ParseSequence(root, in_pos + 1, root->nodes.size());
       return local;
     }
     default:
@@ -279,30 +288,58 @@ MidLevelScopeParser::ParseLocal(shared_ptr<OzNodeGeneric>& root) {
 shared_ptr<AbstractOzNode>
 MidLevelScopeParser::ParseTry(shared_ptr<OzNodeGeneric>& root) {
   shared_ptr<OzNodeTry> try_node(new OzNodeTry);
+
   vector<int> edge_pos;
   SplitNodes(root->nodes, kOzSchema.try_branches, &edge_pos);
-  if (edge_pos.size() == 0)
+
+  if (edge_pos.empty()) {
     return shared_ptr<AbstractOzNode>(
         &OzNodeError::New()
         .SetNode(root)
         .SetError(
-            "Invalid try block, must have 'catch' or 'finally' sections"));
+            "Invalid try block, must have 'catch' and/or 'finally' sections"));
+  } else if (edge_pos.size() > 2) {
+    return shared_ptr<AbstractOzNode>(
+        &OzNodeError::New()
+        .SetNode(root)
+        .SetError(
+            "Invalid try block, "
+            "must have at most one 'catch' and one 'finally' sections"));
+  }
 
-  OzNodeGeneric* body = OzNodeSlice(root->nodes, 0, edge_pos.front());
+  try_node->body = ParseSequence(root, 0, edge_pos.front());
+  if (edge_pos.size() == 1) {
+    const int pos = edge_pos.front();
+    switch (root->nodes[pos]->type) {
+      case OzLexemType::FINALLY: {
+        try_node->finally = ParseSequence(root, pos, root->nodes.size());
+        break;
+      }
+      case OzLexemType::CATCH: {
+        shared_ptr<OzNodeGeneric> slice(
+            OzNodeSlice(root->nodes, pos, root->nodes.size()));
+        try_node->catches = ParseCaseBranch(slice, false);
+        break;
+      }
+      default:
+        LOG(FATAL) << "Dead code";
+    }
+
+  } else if (edge_pos.size() == 2) {
+    const int catch_pos = edge_pos[0];
+    const int finally_pos = edge_pos[1];
+    // TODO: check tokens
+
+    shared_ptr<OzNodeGeneric> slice(
+        OzNodeSlice(root->nodes, catch_pos, finally_pos));
+    try_node->catches = ParseCaseBranch(slice, false);
+    try_node->finally = ParseSequence(root, finally_pos, root->nodes.size());
+  }
+
   const int last_pos = edge_pos.back();
-  OzNodeGeneric* finally = nullptr;
   if (root->nodes[last_pos]->type == OzLexemType::FINALLY) {
-    finally = OzNodeSlice(root->nodes, last_pos, root->nodes.size());
   }
 
-  if (expr_parser_ != nullptr) {
-    expr_parser_->Parse(body);
-    if (finally != nullptr) expr_parser_->Parse(finally);
-  }
-
-  try_node->body.reset(body);
-  // try_node->catches.reset(catches);
-  try_node->finally.reset(finally);
   return try_node;
 }
 
@@ -319,48 +356,48 @@ MidLevelScopeParser::ParseIfBranch(shared_ptr<OzNodeGeneric>& root,
 
   const int then_pos = edge_pos[0];
 
-  OzNodeGeneric* condition = OzNodeSlice(root->nodes, 0, then_pos);
-  OzNodeGeneric* body =
-      OzNodeSlice(root->nodes, then_pos + 1, root->nodes.size());
-  if (expr_parser_ != nullptr) {
-    expr_parser_->Parse(condition);
-    expr_parser_->Parse(body);
-  }
+  //  TODO: Should be ParseExpression instead, to guarantee uniqueness?
+  shared_ptr<AbstractOzNode> condition = ParseSequence(root, 0, then_pos);
+  shared_ptr<AbstractOzNode> body =
+      ParseSequence(root, then_pos + 1, root->nodes.size());
 
   if (pattern) {
     shared_ptr<OzNodePatternBranch> branch(new OzNodePatternBranch);
-    branch->pattern.reset(condition);
-    // TODO: Extract optional branch->condition
-    branch->body.reset(body);
+    // TODO: Extract pattern and optional branch->condition
+    branch->pattern = condition;
+    branch->body = body;
     return branch;
   } else {
     shared_ptr<OzNodeCondBranch> branch(new OzNodeCondBranch);
-    branch->condition.reset(condition);
-    branch->body.reset(body);
+    branch->condition = condition;
+    branch->body = body;
     return branch;
   }
 }
 
 shared_ptr<AbstractOzNode>
-MidLevelScopeParser::ParseCaseBranch(shared_ptr<OzNodeGeneric>& root) {
+MidLevelScopeParser::ParseCaseBranch(shared_ptr<OzNodeGeneric>& root,
+                                     bool with_value) {
+  shared_ptr<OzNodePatternMatch> match(new OzNodePatternMatch);
+
   vector<int> edge_pos;
   SplitNodes(root->nodes, kOzSchema.cond_case_branches, &edge_pos);
-  if (edge_pos.size() < 1)
+  if (with_value && (edge_pos.size() < 1)) {
     return shared_ptr<AbstractOzNode>(
         &OzNodeError::New()
         .SetNode(root)
         .SetError("Invalid pattern case, missing 'of'"));
+  }
 
-  shared_ptr<OzNodePatternMatch> match(new OzNodePatternMatch);
-
-  const int of_pos = edge_pos[0];
-  OzNodeGeneric* value = OzNodeSlice(root->nodes, 0, of_pos);
-  if (expr_parser_ != nullptr)
-    expr_parser_->Parse(value);
-  match->value.reset(value);
-
-  int ibegin = of_pos + 1;
-  for (uint i = 1; i <= edge_pos.size(); ++i) {
+  int ibegin = 0;
+  if (with_value) {
+    const int of_pos = edge_pos[0];
+    // TODO: ParseExpression instead?
+    match->value = ParseSequence(root, 0, of_pos);
+    edge_pos.erase(edge_pos.begin());
+    ibegin = of_pos + 1;
+  }
+  for (uint i = 0; i <= edge_pos.size(); ++i) {
     const int iend = (i < edge_pos.size()
                       ? edge_pos[i]
                       : root->nodes.size());
@@ -389,12 +426,11 @@ MidLevelScopeParser::ParseLock(shared_ptr<OzNodeGeneric>& root) {
   }
 
   const int then_pos = edge_pos[0];
-  shared_ptr<OzNodeGeneric> lock_expr(OzNodeSlice(root->nodes, 0, then_pos));
+  // TODO: ParseExpression instead of Sequence?
+  lock->lock = ParseSequence(root, 0, then_pos);
+
   shared_ptr<OzNodeGeneric> body(
       OzNodeSlice(root->nodes, then_pos + 1, root->nodes.size()));
-  if (expr_parser_ != nullptr) expr_parser_->Parse(lock_expr.get());
-
-  lock->lock = lock_expr;
   lock->body = ParseLocal(body);
 
   return lock;
@@ -469,10 +505,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
       SplitNodes(root->nodes, kOzSchema.functor_branches, &edge_pos);
 
       auto SetFunctorSection = [&](OzLexemType type, int ibegin, int iend) {
-        shared_ptr<OzNodeGeneric> section(
-            OzNodeSlice(root->nodes, ibegin, iend));
-        if (expr_parser_ != nullptr) expr_parser_->Parse(section.get());
-
+        shared_ptr<AbstractOzNode> section = ParseSequence(root, ibegin, iend);
         switch (type) {
           case OzLexemType::FUNCTOR:
             // TODO: section must have exactly one child node - check & optimize
@@ -565,7 +598,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
 
           case OzLexemType::CASE:
           case OzLexemType::ELSECASE: {
-            cond->branches.push_back(ParseCaseBranch(branch));
+            cond->branches.push_back(ParseCaseBranch(branch, true));
             break;
           }
 
