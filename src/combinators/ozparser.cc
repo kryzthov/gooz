@@ -650,8 +650,17 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
       expr_parser_->Parse(root.get());
       return shared_ptr<OzNodeCall>(new OzNodeCall(*root.get()));
     }
-    case OzLexemType::TOP_LEVEL:
-    case OzLexemType::LIST_BEGIN:
+
+    case OzLexemType::LIST_BEGIN: {
+      expr_parser_->Parse(root.get());
+      return shared_ptr<OzNodeList>(new OzNodeList(*root.get()));
+    }
+
+    case OzLexemType::TOP_LEVEL: {
+      expr_parser_->Parse(root.get());
+      return root;  // OzNodeGeneric
+    }
+
     case OzLexemType::BEGIN_RECORD_FEATURES: {
       expr_parser_->Parse(root.get());
       return root;

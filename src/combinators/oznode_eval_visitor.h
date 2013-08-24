@@ -59,18 +59,7 @@ class EvalVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeGeneric* node) {
-    switch (node->type) {
-      case OzLexemType::LIST_BEGIN: {
-        const uint64 nvalues = node->nodes.size();
-        store::Value values[nvalues];
-        for (uint64 i = 0; i < nvalues; ++i)
-          values[i] = Eval(node->nodes[i].get());
-        value_ = store::New::List(store_, nvalues, values);
-        break;
-      }
-      default:
-        LOG(FATAL) << "Unexpected/unsupported node: " << *node;
-    }
+    LOG(FATAL) << "Unexpected/unsupported node: " << *node;
   }
 
   virtual void Visit(OzNodeError* node) {
@@ -222,6 +211,14 @@ class EvalVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeClass* node) {
     LOG(FATAL) << "Cannot evaluate class";
+  }
+
+  virtual void Visit(OzNodeList* node) {
+    const uint64 nvalues = node->nodes.size();
+    store::Value values[nvalues];
+    for (uint64 i = 0; i < nvalues; ++i)
+      values[i] = Eval(node->nodes[i].get());
+    value_ = store::New::List(store_, nvalues, values);
   }
 
   virtual void Visit(OzNodeCall* node) {

@@ -121,6 +121,7 @@ enum class OzLexemType {
     NODE_LOOP,
     NODE_LOCK,
 
+    NODE_LIST,
     NODE_CALL,
     NODE_SEQUENCE,
 };

@@ -91,6 +91,7 @@ string OzLexemTypeStr(OzLexemType type) {
     case OzLexemType::NODE_BINARY_OP: return "NODE_BINARY_OP";
     case OzLexemType::NODE_CALL: return "NODE_CALL";
     case OzLexemType::NODE_FUNCTOR: return "NODE_FUNCTOR";
+    case OzLexemType::NODE_LIST: return "NODE_LIST";
     case OzLexemType::NODE_NARY_OP: return "NODE_NARY_OP";
     case OzLexemType::NODE_RECORD: return "NODE_RECORD";
     case OzLexemType::NODE_SEQUENCE: return "NODE_SEQUENCE";

@@ -48,6 +48,7 @@ class OzNodeForLoop;
 
 class OzNodeLock;
 
+class OzNodeList;
 class OzNodeCall;
 class OzNodeSequence;
 
@@ -88,6 +89,7 @@ class AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeLock* node) = 0;
 
+  virtual void Visit(OzNodeList* node) = 0;
   virtual void Visit(OzNodeCall* node) = 0;
   virtual void Visit(OzNodeSequence* node) = 0;
 
@@ -519,15 +521,32 @@ class OzNodeLock : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
+// AST node for a list definition
+class OzNodeList : public AbstractOzNode {
+ public:
+  OzNodeList() {
+    type = OzLexemType::NODE_LIST;
+  }
+
+  OzNodeList(const OzNodeGeneric& node)
+      : AbstractOzNode(node),
+        nodes(node.nodes) {
+    type = OzLexemType::NODE_LIST;
+  }
+
+  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
+    visitor->Visit(this);
+  }
+
+  vector<shared_ptr<AbstractOzNode> > nodes;
+};
+
+// -----------------------------------------------------------------------------
+
 // AST node for a function call
 class OzNodeCall : public AbstractOzNode {
  public:
   OzNodeCall() {
-    type = OzLexemType::NODE_CALL;
-  }
-
-  OzNodeCall(const OzLexemStream& stream)
-      : AbstractOzNode(stream) {
     type = OzLexemType::NODE_CALL;
   }
 
@@ -550,11 +569,6 @@ class OzNodeCall : public AbstractOzNode {
 class OzNodeSequence : public AbstractOzNode {
  public:
   OzNodeSequence() {
-    type = OzLexemType::NODE_SEQUENCE;
-  }
-
-  OzNodeSequence(const OzLexemStream& stream)
-      : AbstractOzNode(stream) {
     type = OzLexemType::NODE_SEQUENCE;
   }
 
