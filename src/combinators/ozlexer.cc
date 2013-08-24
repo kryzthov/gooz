@@ -89,9 +89,11 @@ string OzLexemTypeStr(OzLexemType type) {
     case OzLexemType::LOOP_INT_RANGE: return "LOOP_INT_RANGE";
     case OzLexemType::METH: return "METH";
     case OzLexemType::NODE_BINARY_OP: return "NODE_BINARY_OP";
+    case OzLexemType::NODE_CALL: return "NODE_CALL";
     case OzLexemType::NODE_FUNCTOR: return "NODE_FUNCTOR";
     case OzLexemType::NODE_NARY_OP: return "NODE_NARY_OP";
     case OzLexemType::NODE_RECORD: return "NODE_RECORD";
+    case OzLexemType::NODE_SEQUENCE: return "NODE_SEQUENCE";
     case OzLexemType::NODE_UNARY_OP: return "NODE_UNARY_OP";
     case OzLexemType::NUMERIC_ADD: return "NUMERIC_ADD";
     case OzLexemType::NUMERIC_DIV: return "NUMERIC_DIV";

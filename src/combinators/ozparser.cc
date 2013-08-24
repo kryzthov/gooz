@@ -624,11 +624,12 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
             .SetNode(root)
             .SetError("Invalid empty procedure declaration"));
       proc->signature = root->nodes[0];
-      if (proc->signature->type != OzLexemType::CALL_BEGIN)
+      if (proc->signature->type != OzLexemType::NODE_CALL) {
         return shared_ptr<AbstractOzNode>(
             &OzNodeError::New()
             .SetNode(root)
             .SetError("Invalid procedure signature"));
+      }
       root->nodes.erase(root->nodes.begin());
       proc->body = root;  // TODO: parse body as local
       proc->fun = (root->type == OzLexemType::FUN);
@@ -645,8 +646,11 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
       break;
     }
 
+    case OzLexemType::CALL_BEGIN: {
+      expr_parser_->Parse(root.get());
+      return shared_ptr<OzNodeCall>(new OzNodeCall(*root.get()));
+    }
     case OzLexemType::TOP_LEVEL:
-    case OzLexemType::CALL_BEGIN:
     case OzLexemType::LIST_BEGIN:
     case OzLexemType::BEGIN_RECORD_FEATURES: {
       expr_parser_->Parse(root.get());

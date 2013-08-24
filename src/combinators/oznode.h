@@ -48,6 +48,7 @@ class OzNodeForLoop;
 
 class OzNodeLock;
 
+class OzNodeCall;
 class OzNodeSequence;
 
 // -----------------------------------------------------------------------------
@@ -87,6 +88,7 @@ class AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeLock* node) = 0;
 
+  virtual void Visit(OzNodeCall* node) = 0;
   virtual void Visit(OzNodeSequence* node) = 0;
 
  private:
@@ -513,6 +515,33 @@ class OzNodeLock : public AbstractOzNode {
 
   shared_ptr<AbstractOzNode> lock;
   shared_ptr<AbstractOzNode> body;
+};
+
+// -----------------------------------------------------------------------------
+
+// AST node for a function call
+class OzNodeCall : public AbstractOzNode {
+ public:
+  OzNodeCall() {
+    type = OzLexemType::NODE_CALL;
+  }
+
+  OzNodeCall(const OzLexemStream& stream)
+      : AbstractOzNode(stream) {
+    type = OzLexemType::NODE_CALL;
+  }
+
+  OzNodeCall(const OzNodeGeneric& node)
+      : AbstractOzNode(node),
+        nodes(node.nodes) {
+    type = OzLexemType::NODE_CALL;
+  }
+
+  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
+    visitor->Visit(this);
+  }
+
+  vector<shared_ptr<AbstractOzNode> > nodes;
 };
 
 // -----------------------------------------------------------------------------

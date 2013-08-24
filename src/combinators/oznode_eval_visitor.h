@@ -60,25 +60,6 @@ class EvalVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeGeneric* node) {
     switch (node->type) {
-      case OzLexemType::CALL_BEGIN: {
-        CHECK_GE(node->nodes.size(), 1UL);
-        OzNodeVar* proc = dynamic_cast<OzNodeVar*>(node->nodes[0].get());
-        if (proc->var_name == "NewName") {
-          value_ = store::New::Name(store_);
-        } else if (proc->var_name == "NewCell") {
-          CHECK_EQ(2UL, node->nodes.size());
-          store::Value value = Eval(node->nodes[1].get());
-          value_ = store::New::Cell(store_, value);
-        } else if (proc->var_name == "NewArray") {
-          CHECK_EQ(3UL, node->nodes.size());
-          store::Value size = Eval(node->nodes[1].get());
-          store::Value value = Eval(node->nodes[2].get());
-          value_ = store::New::Array(store_, store::IntValue(size), value);
-        } else {
-          LOG(FATAL) << "Unknown procedure name: " << proc->var_name;
-        }
-        break;
-      }
       case OzLexemType::LIST_BEGIN: {
         const uint64 nvalues = node->nodes.size();
         store::Value values[nvalues];
@@ -241,6 +222,25 @@ class EvalVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeClass* node) {
     LOG(FATAL) << "Cannot evaluate class";
+  }
+
+  virtual void Visit(OzNodeCall* node) {
+    CHECK_GE(node->nodes.size(), 1UL);
+    OzNodeVar* const proc = dynamic_cast<OzNodeVar*>(node->nodes[0].get());
+    if (proc->var_name == "NewName") {
+      value_ = store::New::Name(store_);
+    } else if (proc->var_name == "NewCell") {
+      CHECK_EQ(2UL, node->nodes.size());
+      store::Value value = Eval(node->nodes[1].get());
+      value_ = store::New::Cell(store_, value);
+    } else if (proc->var_name == "NewArray") {
+      CHECK_EQ(3UL, node->nodes.size());
+      store::Value size = Eval(node->nodes[1].get());
+      store::Value value = Eval(node->nodes[2].get());
+      value_ = store::New::Array(store_, store::IntValue(size), value);
+    } else {
+      LOG(FATAL) << "Unknown procedure name: " << proc->var_name;
+    }
   }
 
   virtual void Visit(OzNodeSequence* node) {

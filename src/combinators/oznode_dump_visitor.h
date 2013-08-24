@@ -222,6 +222,15 @@ class DumpVisitor : public AbstractOzNodeVisitor {
     Indent() << "body:"; node->body->AcceptVisitor(this);
   }
 
+  virtual void Visit(OzNodeCall* node) {
+    Node n(this, "OzNodeCall");
+    Indent() << "nodes:";
+    int i = 1;
+    for (shared_ptr<AbstractOzNode> step : node->nodes) {
+      Indent() << "node" << i++ << ":"; step->AcceptVisitor(this);
+    }
+  }
+
   virtual void Visit(OzNodeSequence* node) {
     Node n(this, "OzNodeSequence");
     Indent() << "nodes:";

@@ -125,6 +125,12 @@ class DefaultVisitor : public AbstractOzNodeVisitor {
     node->exn->AcceptVisitor(this);
   }
 
+  virtual void Visit(OzNodeCall* node) {
+    for (auto step : node->nodes) {
+      step->AcceptVisitor(this);
+    }
+  }
+
   virtual void Visit(OzNodeSequence* node) {
     for (auto step : node->nodes) {
       step->AcceptVisitor(this);
