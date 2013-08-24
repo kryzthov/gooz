@@ -5,7 +5,6 @@
 
 #include "base/stringer.h"
 #include "combinators/oznode.h"
-#include "combinators/oznode_visitor.h"
 
 namespace combinators { namespace oz {
 

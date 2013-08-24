@@ -61,12 +61,14 @@ Library(
 Library(
   name='combinators_lib',
   sources=[
+    #'combinators/oznode_compile_visitor.cc',
     'combinators/base.cc',
     'combinators/ozlexer.cc',
     'combinators/oznode.cc',
+    'combinators/oznode_check_visitor.cc',
+    'combinators/oznode_default_visitor.cc',
     'combinators/oznode_dump_visitor.cc',
     'combinators/oznode_eval_visitor.cc',
-    'combinators/oznode_visitor.cc',
     'combinators/ozparser.cc',
     'combinators/stream.cc',
   ],

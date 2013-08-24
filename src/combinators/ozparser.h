@@ -8,7 +8,7 @@
 #include "combinators/base.h"
 #include "combinators/ozlexer.h"
 #include "combinators/oznode.h"
-#include "combinators/oznode_visitor.h"
+#include "combinators/oznode_check_visitor.h"
 #include "combinators/oznode_dump_visitor.h"
 #include "combinators/stream.h"
 

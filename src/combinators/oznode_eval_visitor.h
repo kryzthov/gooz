@@ -5,7 +5,6 @@
 
 #include "base/stl-util.h"
 #include "combinators/oznode.h"
-#include "combinators/oznode_visitor.h"
 #include "combinators/oznode_dump_visitor.h"
 
 #include "store/store.h"
