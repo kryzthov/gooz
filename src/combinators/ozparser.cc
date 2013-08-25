@@ -317,7 +317,7 @@ MidLevelScopeParser::ParseTry(shared_ptr<OzNodeGeneric>& root) {
       }
       case OzLexemType::CATCH: {
         shared_ptr<OzNodeGeneric> slice(
-            OzNodeSlice(root->nodes, pos, root->nodes.size()));
+            OzNodeSlice(root->nodes, pos + 1, root->nodes.size()));
         try_node->catches = ParseCaseBranch(slice, false);
         break;
       }
@@ -331,9 +331,9 @@ MidLevelScopeParser::ParseTry(shared_ptr<OzNodeGeneric>& root) {
     // TODO: check tokens
 
     shared_ptr<OzNodeGeneric> slice(
-        OzNodeSlice(root->nodes, catch_pos, finally_pos));
+        OzNodeSlice(root->nodes, catch_pos + 1, finally_pos));
     try_node->catches = ParseCaseBranch(slice, false);
-    try_node->finally = ParseSequence(root, finally_pos, root->nodes.size());
+    try_node->finally = ParseSequence(root, finally_pos + 1, root->nodes.size());
   }
 
   const int last_pos = edge_pos.back();

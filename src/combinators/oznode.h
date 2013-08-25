@@ -146,7 +146,12 @@ class OzNode : public AbstractOzNode {
 
 // -----------------------------------------------------------------------------
 
-// AST node representing a sequence of nodes.
+// AST node representing an arbitrary sequence of nodes.
+//
+// After the mid-level parser is run, there should be no generic nodes left,
+// except for the following cases:
+//  - top-level node
+//  - record features
 class OzNodeGeneric : public AbstractOzNode {
  public:
   OzNodeGeneric() {}

@@ -69,6 +69,7 @@ Library(
     'combinators/oznode_default_visitor.cc',
     'combinators/oznode_dump_visitor.cc',
     'combinators/oznode_eval_visitor.cc',
+    'combinators/oznode_format_visitor.cc',
     'combinators/ozparser.cc',
     'combinators/stream.cc',
   ],

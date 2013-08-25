@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include "combinators/oznode_format_visitor.h"
+
 namespace combinators { namespace oz {
 
 // -----------------------------------------------------------------------------
@@ -306,6 +308,7 @@ class OzParserTest : public testing::Test {
     text_ = text;
     const bool success = parser_.Parse(text_);
     LOG(INFO) << "AST:\n" << *parser_.root();
+    LOG(INFO) << "Formatted:\n" << Format(*parser_.root());
     return success;
   }
 
