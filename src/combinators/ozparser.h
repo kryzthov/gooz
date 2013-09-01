@@ -20,6 +20,7 @@ namespace combinators { namespace oz {
 
 // -----------------------------------------------------------------------------
 
+// Returns the slice of lexems that includes the specified first and last nodes.
 inline OzLexemStream OzLexemSlice(const AbstractOzNode& first,
                                   const AbstractOzNode& last) {
   return OzLexemStream(first.tokens, last.tokens.SliceAfter());
