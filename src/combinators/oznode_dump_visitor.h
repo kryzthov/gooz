@@ -6,6 +6,8 @@
 #include "base/stringer.h"
 #include "combinators/oznode.h"
 
+#include <boost/format.hpp>
+
 namespace combinators { namespace oz {
 
 class DumpVisitor : public AbstractOzNodeVisitor {
@@ -34,8 +36,8 @@ class DumpVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeGeneric* node) {
-    Node n(this, "OzNodeGeneric");
-    Indent() << "type:" << node->type << " ";
+    Node n(this, (boost::format("OzNodeGeneric[%s]") % node->type).str());
+    Indent();
     if (node->tokens.StreamSize() > 0) {
       os_ << "tokens:" << node->tokens.first();
       if (node->tokens.StreamSize() > 1)
@@ -75,28 +77,22 @@ class DumpVisitor : public AbstractOzNodeVisitor {
   }
 
   virtual void Visit(OzNodeUnaryOp* node) {
-    Node n(this, "OzNodeUnaryOp");
-    Indent() << "operator:" << node->type; NewLine();
-    Indent() << "operand:"; node->operand->AcceptVisitor(this);
+    Node n(this, (boost::format("OzNodeUnaryOp[%s]") % node->type).str());
+    Indent(); node->operand->AcceptVisitor(this);
   }
 
   virtual void Visit(OzNodeBinaryOp* node) {
-    Node n(this, "OzNodeBinaryOp");
-    Indent() << "operator:" << node->type; NewLine();
+    Node n(this, (boost::format("OzNodeBinaryOp[%s]") % node->type).str());
     Indent() << "left:"; node->lop->AcceptVisitor(this);
     Indent() << "right:"; node->rop->AcceptVisitor(this);
   }
 
   virtual void Visit(OzNodeNaryOp* node) {
-    Node n(this, "OzNodeNaryOp");
-    Indent() << "operator:" << node->type; NewLine();
-    Indent() << "operands:"; NewLine();
-    level_++;
+    Node n(this, (boost::format("OzNodeNaryOp[%s]") % node->type).str());
     int i = 1;
     for (shared_ptr<AbstractOzNode>& op : node->operands) {
       Indent() << "operand" << i++ << ":"; op->AcceptVisitor(this);
     }
-    level_--;
   }
 
   virtual void Visit(OzNodeFunctor* node) {
@@ -233,7 +229,6 @@ class DumpVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeCall* node) {
     Node n(this, "OzNodeCall");
-    Indent() << "nodes:";
     int i = 1;
     for (shared_ptr<AbstractOzNode> step : node->nodes) {
       Indent() << "node" << i++ << ":"; step->AcceptVisitor(this);
@@ -242,7 +237,6 @@ class DumpVisitor : public AbstractOzNodeVisitor {
 
   virtual void Visit(OzNodeSequence* node) {
     Node n(this, "OzNodeSequence");
-    Indent() << "nodes:";
     int i = 1;
     for (shared_ptr<AbstractOzNode> step : node->nodes) {
       Indent() << "node" << i++ << ":"; step->AcceptVisitor(this);
