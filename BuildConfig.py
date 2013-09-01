@@ -61,7 +61,7 @@ Library(
 Library(
   name='combinators_lib',
   sources=[
-    #'combinators/oznode_compile_visitor.cc',
+    'combinators/oznode_compile_visitor.cc',
     'combinators/base.cc',
     'combinators/ozlexer.cc',
     'combinators/oznode.cc',
@@ -151,6 +151,17 @@ Test(
   sources=[
     'combinators/ozparser_test.cc',
     'combinators/oznode_eval_visitor_test.cc',
+  ],
+  dependencies=[
+    'combinators_lib',
+    'gtest_main_lib',
+  ],
+)
+
+Test(
+  name='combinators/oznode_compile_visitor_test',
+  sources=[
+    'combinators/oznode_compile_visitor_test.cc',
   ],
   dependencies=[
     'combinators_lib',
