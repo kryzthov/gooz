@@ -127,7 +127,7 @@ enum class OzLexemType {
 };
 
 string OzLexemTypeStr(OzLexemType type);
-inline string Str(OzLexemType t) {return OzLexemTypeStr(t);}
+inline string Str(OzLexemType type) { return OzLexemTypeStr(type); }
 
 inline std::ostream& operator <<(std::ostream& os, OzLexemType type) {
   return os << OzLexemTypeStr(type);
