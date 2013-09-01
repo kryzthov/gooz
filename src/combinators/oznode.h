@@ -17,81 +17,65 @@ namespace combinators { namespace oz {
 // -----------------------------------------------------------------------------
 
 class AbstractOzNode;
-
 class OzNode;
-class OzNodeGeneric;
-
-class OzNodeError;
-
-class OzNodeVar;
-class OzNodeRecord;
-class OzNodeUnaryOp;
 class OzNodeBinaryOp;
-class OzNodeNaryOp;
-
-class OzNodeFunctor;
-class OzNodeLocal;
-class OzNodeProc;
+class OzNodeCall;
 class OzNodeClass;
-class OzNodeThread;
-
 class OzNodeCond;
 class OzNodeCondBranch;
-class OzNodePatternMatch;
-class OzNodePatternBranch;
-
-class OzNodeRaise;
-class OzNodeTry;
-
-class OzNodeLoop;
+class OzNodeError;
 class OzNodeForLoop;
-
-class OzNodeLock;
-
+class OzNodeFunctor;
+class OzNodeGeneric;
 class OzNodeList;
-class OzNodeCall;
+class OzNodeLocal;
+class OzNodeLock;
+class OzNodeLoop;
+class OzNodeNaryOp;
+class OzNodePatternBranch;
+class OzNodePatternMatch;
+class OzNodeProc;
+class OzNodeRaise;
+class OzNodeRecord;
 class OzNodeSequence;
+class OzNodeThread;
+class OzNodeTry;
+class OzNodeUnaryOp;
+class OzNodeVar;
 
 // -----------------------------------------------------------------------------
 
+// Interface for AST node visitors:
 class AbstractOzNodeVisitor {
  public:
   AbstractOzNodeVisitor() {}
   virtual ~AbstractOzNodeVisitor() {}
 
   virtual void Visit(OzNode* node) = 0;
-  virtual void Visit(OzNodeGeneric* node) = 0;
-
-  virtual void Visit(OzNodeError* node) = 0;
-
-  virtual void Visit(OzNodeVar* node) = 0;
-  virtual void Visit(OzNodeRecord* node) = 0;
   virtual void Visit(OzNodeBinaryOp* node) = 0;
-  virtual void Visit(OzNodeUnaryOp* node) = 0;
-  virtual void Visit(OzNodeNaryOp* node) = 0;
-
-  virtual void Visit(OzNodeFunctor* node) = 0;
-  virtual void Visit(OzNodeLocal* node) = 0;
-  virtual void Visit(OzNodeProc* node) = 0;
+  virtual void Visit(OzNodeCall* node) = 0;
   virtual void Visit(OzNodeClass* node) = 0;
-  virtual void Visit(OzNodeThread* node) = 0;
-
   virtual void Visit(OzNodeCond* node) = 0;
   virtual void Visit(OzNodeCondBranch* node) = 0;
-  virtual void Visit(OzNodePatternMatch* node) = 0;
-  virtual void Visit(OzNodePatternBranch* node) = 0;
-
-  virtual void Visit(OzNodeRaise* node) = 0;
-  virtual void Visit(OzNodeTry* node) = 0;
-
-  virtual void Visit(OzNodeLoop* node) = 0;
+  virtual void Visit(OzNodeError* node) = 0;
   virtual void Visit(OzNodeForLoop* node) = 0;
-
-  virtual void Visit(OzNodeLock* node) = 0;
-
+  virtual void Visit(OzNodeFunctor* node) = 0;
+  virtual void Visit(OzNodeGeneric* node) = 0;
   virtual void Visit(OzNodeList* node) = 0;
-  virtual void Visit(OzNodeCall* node) = 0;
+  virtual void Visit(OzNodeLocal* node) = 0;
+  virtual void Visit(OzNodeLock* node) = 0;
+  virtual void Visit(OzNodeLoop* node) = 0;
+  virtual void Visit(OzNodeNaryOp* node) = 0;
+  virtual void Visit(OzNodePatternBranch* node) = 0;
+  virtual void Visit(OzNodePatternMatch* node) = 0;
+  virtual void Visit(OzNodeProc* node) = 0;
+  virtual void Visit(OzNodeRaise* node) = 0;
+  virtual void Visit(OzNodeRecord* node) = 0;
   virtual void Visit(OzNodeSequence* node) = 0;
+  virtual void Visit(OzNodeThread* node) = 0;
+  virtual void Visit(OzNodeTry* node) = 0;
+  virtual void Visit(OzNodeUnaryOp* node) = 0;
+  virtual void Visit(OzNodeVar* node) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AbstractOzNodeVisitor);
@@ -125,6 +109,13 @@ class AbstractOzNode {
   }
 
   virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) = 0;
+
+  // Sub-classes must be declared VISITABLE():
+  #define VISITABLE()                                          \
+  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) { \
+    visitor->Visit(this);                                      \
+  }
+
 };
 
 // -----------------------------------------------------------------------------
@@ -139,9 +130,7 @@ class OzNode : public AbstractOzNode {
       : AbstractOzNode(tokens) {
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 };
 
 // -----------------------------------------------------------------------------
@@ -165,9 +154,7 @@ class OzNodeGeneric : public AbstractOzNode {
         nodes(node.nodes) {
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   vector<shared_ptr<AbstractOzNode> > nodes;
 };
@@ -198,9 +185,7 @@ class OzNodeError : public AbstractOzNode {
     return *this;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   // Error message
   string error;
@@ -224,13 +209,15 @@ class OzNodeVar : public AbstractOzNode {
     var_name = boost::get<string>(token.value);
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   OzLexem token;
   string var_name;
+
+  // !X ensures that X is a pre-existing variable
   bool no_declare;
+
+  // ?X indicates an output parameter
   bool is_output;
 };
 
@@ -245,9 +232,7 @@ class OzNodeRecord : public AbstractOzNode {
     type = OzLexemType::NODE_RECORD;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> label;
   shared_ptr<OzNodeGeneric> features;
@@ -259,9 +244,7 @@ class OzNodeRecord : public AbstractOzNode {
 // AST node representing a unary expression.
 class OzNodeUnaryOp : public AbstractOzNode {
  public:
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   OzLexem operation;
   shared_ptr<AbstractOzNode> operand;
@@ -272,9 +255,7 @@ class OzNodeUnaryOp : public AbstractOzNode {
 // AST node representing a binary expression.
 class OzNodeBinaryOp : public AbstractOzNode {
  public:
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   OzLexem operation;
   shared_ptr<AbstractOzNode> lop, rop;
@@ -285,9 +266,7 @@ class OzNodeBinaryOp : public AbstractOzNode {
 // AST node representing a n-ary expression.
 class OzNodeNaryOp : public AbstractOzNode {
  public:
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   OzLexem operation;
   vector<shared_ptr<AbstractOzNode> > operands;
@@ -302,9 +281,7 @@ class OzNodeFunctor : public AbstractOzNode {
     type = OzLexemType::NODE_FUNCTOR;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> functor;
   shared_ptr<AbstractOzNode> exports;
@@ -322,15 +299,17 @@ class OzNodeLocal : public AbstractOzNode {
   OzNodeLocal() {
     type = OzLexemType::NODE_LOCAL;
   }
+
   OzNodeLocal(const OzNodeGeneric& node) : AbstractOzNode(node) {
     type = OzLexemType::NODE_LOCAL;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
+  // Defining section (variables may be declared here), may be null:
   shared_ptr<AbstractOzNode> defs;
+
+  // Non defining section (variables may not be declared here), may be null:
   shared_ptr<AbstractOzNode> body;
 };
 
@@ -343,9 +322,7 @@ class OzNodeProc : public AbstractOzNode {
     type = OzLexemType::NODE_PROC;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> signature;
   shared_ptr<AbstractOzNode> body;
@@ -361,9 +338,7 @@ class OzNodeClass : public AbstractOzNode {
     type = OzLexemType::NODE_CLASS;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   // TODO: Define
 };
@@ -377,9 +352,7 @@ class OzNodeThread : public AbstractOzNode {
     type = OzLexemType::NODE_THREAD;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> body;
 };
@@ -390,9 +363,7 @@ class OzNodeCondBranch : public AbstractOzNode {
  public:
   OzNodeCondBranch() {}
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> condition;
   shared_ptr<AbstractOzNode> body;
@@ -402,9 +373,7 @@ class OzNodePatternBranch : public AbstractOzNode {
  public:
   OzNodePatternBranch() {}
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> pattern;
   shared_ptr<AbstractOzNode> condition;  // may be null
@@ -415,9 +384,7 @@ class OzNodePatternMatch : public AbstractOzNode {
  public:
   OzNodePatternMatch() {}
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> value;  // null in exn catch statements.
   vector<shared_ptr<AbstractOzNode> > branches;
@@ -426,11 +393,11 @@ class OzNodePatternMatch : public AbstractOzNode {
 // AST node for branching (if/case).
 class OzNodeCond : public AbstractOzNode {
  public:
-  OzNodeCond() {}
-
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
+  OzNodeCond(const OzNodeGeneric& node)
+      : AbstractOzNode(node) {
   }
+
+  VISITABLE();
 
   // Branches are either OzNodeCondBranch or OzNodePatternMatch.
   vector<shared_ptr<AbstractOzNode> > branches;
@@ -447,9 +414,7 @@ class OzNodeTry : public AbstractOzNode {
     type = OzLexemType::NODE_TRY;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> body;
   shared_ptr<AbstractOzNode> catches;  // may be null or OzNodePatternMatch
@@ -465,9 +430,7 @@ class OzNodeRaise : public AbstractOzNode {
     type = OzLexemType::NODE_RAISE;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> exn;
 };
@@ -481,9 +444,7 @@ class OzNodeLoop : public AbstractOzNode {
     type = OzLexemType::NODE_LOOP;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> body;
 };
@@ -497,9 +458,7 @@ class OzNodeForLoop : public AbstractOzNode {
     type = OzLexemType::FOR;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   // TODO: loop declaration???
   shared_ptr<AbstractOzNode> var;
@@ -516,9 +475,7 @@ class OzNodeLock : public AbstractOzNode {
     type = OzLexemType::NODE_LOCK;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   shared_ptr<AbstractOzNode> lock;
   shared_ptr<AbstractOzNode> body;
@@ -529,19 +486,13 @@ class OzNodeLock : public AbstractOzNode {
 // AST node for a list definition
 class OzNodeList : public AbstractOzNode {
  public:
-  OzNodeList() {
-    type = OzLexemType::NODE_LIST;
-  }
-
   OzNodeList(const OzNodeGeneric& node)
       : AbstractOzNode(node),
         nodes(node.nodes) {
     type = OzLexemType::NODE_LIST;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   vector<shared_ptr<AbstractOzNode> > nodes;
 };
@@ -551,19 +502,13 @@ class OzNodeList : public AbstractOzNode {
 // AST node for a function call
 class OzNodeCall : public AbstractOzNode {
  public:
-  OzNodeCall() {
-    type = OzLexemType::NODE_CALL;
-  }
-
   OzNodeCall(const OzNodeGeneric& node)
       : AbstractOzNode(node),
         nodes(node.nodes) {
     type = OzLexemType::NODE_CALL;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   vector<shared_ptr<AbstractOzNode> > nodes;
 };
@@ -573,19 +518,13 @@ class OzNodeCall : public AbstractOzNode {
 // AST node for a sequence of instructions.
 class OzNodeSequence : public AbstractOzNode {
  public:
-  OzNodeSequence() {
-    type = OzLexemType::NODE_SEQUENCE;
-  }
-
   OzNodeSequence(const OzNodeGeneric& node)
       : AbstractOzNode(node),
         nodes(node.nodes) {
     type = OzLexemType::NODE_SEQUENCE;
   }
 
-  virtual void AcceptVisitor(AbstractOzNodeVisitor* visitor) {
-    visitor->Visit(this);
-  }
+  VISITABLE();
 
   vector<shared_ptr<AbstractOzNode> > nodes;
 };
