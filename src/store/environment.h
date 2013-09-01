@@ -11,10 +11,18 @@ using std::unique_ptr;
 
 namespace store {
 
+class Environment;
+class NestedRegisterAllocator;
+class RegisterAllocator;
+class RegisterAllocatorInterface;
+class ScopedSymbol;
+class ScopedTemp;
+class Symbol;
+
 // -----------------------------------------------------------------------------
 
-// A symbol is a way to reference an value, be it explicit, the value of a
-// named or unnamed variable (eg. implicit variables for the results of
+// A symbol is a way to reference a value, be it explicit, the value of a
+// named or an unnamed variable (eg. implicit variables for the results of
 // a function call), etc.
 class Symbol {
  public:
@@ -26,6 +34,7 @@ class Symbol {
     GLOBAL,  // = Immediate
   };
 
+  // The default constructor creates an invalid symbol.
   Symbol()
       : type_(INVALID),
         name_(),
@@ -33,6 +42,7 @@ class Symbol {
         immediate_() {
   }
 
+  // Copy constructor.
   Symbol(const Symbol& symbol)
       : type_(symbol.type_),
         name_(symbol.name_),
@@ -92,8 +102,34 @@ class Symbol {
   bool operator==(const Symbol& o) const {
     return (type_ == o.type_)
         && (name_ == o.name_)
-        && (index_ == index_)
-        && (immediate_ == immediate_);
+        && (index_ == o.index_)
+        && (immediate_ == o.immediate_);
+  }
+
+  // Assignment operator
+  Symbol& operator=(const Symbol& o) {
+    type_ = o.type_;
+    name_ = o.name_;
+    index_ = o.index_;
+    immediate_ = o.immediate_;
+    return *this;
+  }
+
+  static
+  string DebugString(Symbol::Type type) {
+    switch (type) {
+      case INVALID: return "INVALID";
+      case PARAMETER: return "PARAMETER";
+      case LOCAL: return "LOCAL";
+      case CLOSURE: return "CLOSURE";
+      case GLOBAL: return "GLOBAL";
+      default: LOG(FATAL) << "Invalid symbol type: " << type;
+    }
+  }
+
+  string DebugString() const {
+    return (boost::format("Symbol(type:%s name:'%s' index:%s)")
+            % DebugString(type_) % name_ % index_).str();
   }
 
  private:
@@ -102,6 +138,11 @@ class Symbol {
   int index_;  // register
   Value immediate_;  // global
 };
+
+inline
+string DebugString(const Symbol& symbol) {
+  return symbol.DebugString();
+}
 
 // -----------------------------------------------------------------------------
 
@@ -120,6 +161,8 @@ class RegisterAllocatorInterface {
   virtual const UnorderedMap<int, Symbol>& symbols() const = 0;
   virtual const UnorderedMap<string, Symbol>& named_symbols() const = 0;
 };
+
+// -----------------------------------------------------------------------------
 
 // An allocator for indexed registers.
 class RegisterAllocator : public RegisterAllocatorInterface {
@@ -210,8 +253,9 @@ class RegisterAllocator : public RegisterAllocatorInterface {
   DISALLOW_COPY_AND_ASSIGN(RegisterAllocator);
 };
 
+// -----------------------------------------------------------------------------
+
 // An allocator nested on top of an existing allocator.
-// The parent allocator must not be used while the nested allocator exists.
 class NestedRegisterAllocator : public RegisterAllocatorInterface {
  public:
   NestedRegisterAllocator(RegisterAllocatorInterface* parent)
@@ -260,7 +304,7 @@ class NestedRegisterAllocator : public RegisterAllocatorInterface {
 
  private:
   // The allocator on top of which this allocator is built.
-  RegisterAllocatorInterface* parent_;
+  RegisterAllocatorInterface* const parent_;
 
   // Symbols generated.
   UnorderedMap<int, Symbol> symbols_;
@@ -269,8 +313,6 @@ class NestedRegisterAllocator : public RegisterAllocatorInterface {
 };
 
 // -----------------------------------------------------------------------------
-
-class Environment;
 
 // A scoped symbol keeps a symbol in the environment until it is destroyed.
 class ScopedSymbol {
@@ -360,21 +402,41 @@ class Environment {
 
   // Nested local register allocators.
   void BeginNestedLocalAllocator();
-  void EndNestedLocalAllocator();
+  shared_ptr<RegisterAllocatorInterface> EndNestedLocalAllocator();
+
   class NestedLocalAllocator {
    public:
-    NestedLocalAllocator(Environment* env) : env_(CHECK_NOTNULL(env)) {
+    NestedLocalAllocator(Environment* env)
+        : env_(CHECK_NOTNULL(env)),
+          locked_(false) {
       env_->BeginNestedLocalAllocator();
     }
+
     virtual ~NestedLocalAllocator() {
-      env_->EndNestedLocalAllocator();
+      if (!locked_) Lock();
     }
+
+    void Lock() {
+      CHECK(!locked_);
+      locked_ = true;
+      allocator_ = env_->EndNestedLocalAllocator();
+    }
+
    private:
     Environment* const env_;
+
+    // Local allocator, initialized when the local allocator is locked.
+    shared_ptr<RegisterAllocatorInterface> allocator_;
+
+    // Becomes true when the local allocator is locked.
+    bool locked_;
   };
+
   NestedLocalAllocator* NewNestedLocalAllocator() {
     return new NestedLocalAllocator(this);
   }
+
+
 
   const UnorderedMap<string, Symbol>& global_symbols() const {
     return global_symbols_;
@@ -430,9 +492,10 @@ class ScopedTemp {
     Free();
   }
 
-  void Allocate(const string& description = "") {
+  Operand Allocate(const string& description = "") {
     CHECK(!valid());
     symbol_ = env_->AddTemporary(description);
+    return GetOperand();
   }
 
   void Free() {

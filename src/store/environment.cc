@@ -89,7 +89,8 @@ ScopedSymbol* Environment::NewScopedLocal(const string& name) {
 }
 
 Symbol Environment::AddTemporary(const string& description) {
-  const Symbol& symbol = local_allocator_->Allocate("");
+  const string anonymous = "";
+  const Symbol& symbol = local_allocator_->Allocate(anonymous);
   temps_.insert_new(symbol.index(), description);
   return symbol;
 }
@@ -118,9 +119,11 @@ void Environment::BeginNestedLocalAllocator() {
       new NestedRegisterAllocator(local_allocator_.release()));
 }
 
-void Environment::EndNestedLocalAllocator() {
-  local_allocator_.reset(local_allocator_->parent());
+shared_ptr<RegisterAllocatorInterface> Environment::EndNestedLocalAllocator() {
+  shared_ptr<RegisterAllocatorInterface> local(local_allocator_.release());
+  local_allocator_.reset(local->parent());
   CHECK_NOTNULL(local_allocator_.get());
+  return local;
 }
 
 }  // namespace store
