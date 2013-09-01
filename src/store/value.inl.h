@@ -353,6 +353,17 @@ class New {
   }
 
   static inline
+  Value String(Store* store, const string& str) {
+    return store::String::Get(store, str);
+  }
+
+  static inline
+  Value Real(Store* store, const base::real::Real& real) {
+    LOG(FATAL) << "not implemented";
+    // return store::String::Real(store, real);
+  }
+
+  static inline
   Value TupleArity(Store* store, uint64 size) {
     return store::Arity::GetTuple(size);
   }

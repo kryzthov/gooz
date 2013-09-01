@@ -16,6 +16,7 @@ using std::vector;
 #include <gmpxx.h>
 
 #include "base/macros.h"
+#include "base/real.h"
 #include "base/stl-util.h"
 #include "proto/store.pb.h"
 
