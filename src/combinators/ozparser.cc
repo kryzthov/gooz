@@ -255,6 +255,12 @@ MidLevelScopeParser::ParseSequence(
     shared_ptr<OzNodeGeneric>& root,
     int ibegin,
     int iend) {
+  VLOG(2) << "ParseSequence(\n"
+          << *root << ", "
+          << "ibegin=" << ibegin << ", "
+          << "iend=" << iend
+          << ")";
+
   OzNodeGeneric* const slice = OzNodeSlice(root->nodes, ibegin, iend);
   if (expr_parser_ != nullptr) expr_parser_->Parse(slice);
 
@@ -264,6 +270,10 @@ MidLevelScopeParser::ParseSequence(
 
 shared_ptr<AbstractOzNode>
 MidLevelScopeParser::ParseLocal(shared_ptr<OzNodeGeneric>& root) {
+  VLOG(2) << "ParseLocal(\n"
+          << *root
+          << ")";
+
   vector<int> edge_pos;
   SplitNodes(root->nodes, kOzSchema.local_branches, &edge_pos);
 
@@ -559,7 +569,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
 
     case OzLexemType::IF:
     case OzLexemType::CASE: {
-      shared_ptr<OzNodeCond> cond(new OzNodeCond);
+      shared_ptr<OzNodeCond> cond(new OzNodeCond(*root));
 
       vector<int> edge_pos;
       SplitNodes(root->nodes, kOzSchema.cond_branches, &edge_pos);
@@ -618,6 +628,7 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
     case OzLexemType::FUN:
     case OzLexemType::PROC: {
       shared_ptr<OzNodeProc> proc(new OzNodeProc);
+      proc->tokens = root->tokens;  // TODO: Fix this
       if (root->nodes.size() < 2)
         return shared_ptr<AbstractOzNode>(
             &OzNodeError::New()
@@ -630,8 +641,14 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
             .SetNode(root)
             .SetError("Invalid procedure signature"));
       }
+
+      // Remove the signature:
+      root->tokens = OzLexemStream(
+          root->nodes.front()->tokens,
+          root->tokens.SliceAfter());
       root->nodes.erase(root->nodes.begin());
-      proc->body = root;  // TODO: parse body as local
+
+      proc->body = ParseLocal(root);
       proc->fun = (root->type == OzLexemType::FUN);
       return proc;
     }
