@@ -81,6 +81,8 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   shared_ptr<OzNodeCall> signature =
       std::dynamic_pointer_cast<OzNodeCall>(node->signature);
   if (signature->nodes[0]->type != OzLexemType::EXPR_VAL) {
+    CHECK(result_->statement());
+
     // Convert statement:
     //     proc {Proc ...} ... end
     // into:
@@ -106,6 +108,17 @@ void CompileVisitor::Visit(OzNodeProc* node) {
 
   CHECK(!result_->statement())
       << "Procedure value cannot be used as a statement";
+  shared_ptr<ExpressionResult> result = result_;
+
+  if (node->fun) {
+    // TODO: rewrite:
+    //     fun {Fun Params...} (body) end
+    // into:
+    //     proc {Fun Params... Result} Result = (body) end
+    LOG(FATAL) << "functions are not implemented";
+
+    return;
+  }
 
   // Compile procedure values (eg. proc {$ ...} ... end) into closures:
 
@@ -123,11 +136,8 @@ void CompileVisitor::Visit(OzNodeProc* node) {
     environment_->AddParameter(param_var->var_name);
   }
 
-  if (node->fun) {
-    // fun {F X Y} is equivalent to proc {F X Y Result}
-    // TODO: add an invisible return parameter?
-    LOG(FATAL) << "functions are not implemented";
-  }
+  // After normalization, procedure body is necessarily a statement:
+  result_.reset(new ExpressionResult);
   node->body->AcceptVisitor(this);
 
   // Generate the Closure with the number of registers from the environment.
@@ -147,6 +157,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   // Restore saved state:
   std::swap(segment_, saved_segment);
 
+  result_ = result;
   result_->SetValue(Operand(store::Optimize(closure).as<Closure>()));
 }
 
@@ -314,10 +325,13 @@ void CompileVisitor::Visit(OzNodeFunctor* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeLocal* node) {
+  shared_ptr<ExpressionResult> result = result_;
+
   unique_ptr<Environment::NestedLocalAllocator> local(
       environment_->NewNestedLocalAllocator());
 
   if (node->defs != nullptr) {
+    result_.reset(new ExpressionResult);  // statement
     node->defs->AcceptVisitor(this);
   }
 
@@ -326,8 +340,9 @@ void CompileVisitor::Visit(OzNodeLocal* node) {
   //  - no new symbol may be defined in this scope.
   local->Lock();
 
+  result_ = result;
   if (node->body != nullptr) {
-    node->defs->AcceptVisitor(this);
+    node->body->AcceptVisitor(this);
   }
 
   // Remove the local symbols:

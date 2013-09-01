@@ -66,5 +66,15 @@ TEST_F(CompileVisitorTest, Raise) {
   Compile("proc {P X} raise X end end");
 }
 
+TEST_F(CompileVisitorTest, ProcWithLocal) {
+  Compile(
+      "proc {P X}\n"
+      "  Y = 1\n"
+      "in\n"
+      "  {show Y}\n"
+      "end\n"
+  );
+}
+
 
 }}  // namespace combinators::oz
