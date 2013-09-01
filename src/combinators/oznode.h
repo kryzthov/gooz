@@ -426,7 +426,7 @@ class OzNodeTry : public AbstractOzNode {
 // AST node for a raise statement.
 class OzNodeRaise : public AbstractOzNode {
  public:
-  OzNodeRaise() {
+  OzNodeRaise(const OzNodeGeneric& node): AbstractOzNode(node) {
     type = OzLexemType::NODE_RAISE;
   }
 

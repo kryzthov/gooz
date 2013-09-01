@@ -353,12 +353,18 @@ void CompileVisitor::Visit(OzNodeTry* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeRaise* node) {
-  LOG(FATAL) << "Cannot evaluate raise";
+  shared_ptr<ExpressionResult> result = result_;
+  result_.reset(new ExpressionResult(environment_));
+  node->exn->AcceptVisitor(this);
+  segment_->push_back(
+      Bytecode(Bytecode::EXN_RAISE, result_->value()));
+  result_ = result;
+  // No need to set the result value here.
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodeClass* node) {
-  LOG(FATAL) << "Cannot evaluate class";
+  LOG(FATAL) << "classes are not implemented";
 }
 
 // virtual
@@ -370,9 +376,9 @@ void CompileVisitor::Visit(OzNodeSequence* node) {
   for (uint64 i = 0; i <= ilast; ++i) {
     const bool is_last = (i == ilast);
     if (is_last) {
-      result_.reset(new ExpressionResult());  // statement
-    } else {
       result_ = result;
+    } else {
+      result_.reset(new ExpressionResult());  // statement
     }
     node->nodes[i]->AcceptVisitor(this);
   }

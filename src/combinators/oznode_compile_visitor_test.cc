@@ -30,8 +30,20 @@ class CompileVisitorTest : public testing::Test {
   CompileVisitor visitor_;
 };
 
-TEST_F(CompileVisitorTest, Base) {
-  Compile("proc {P X Y} X = {X X = Y} end");
+TEST_F(CompileVisitorTest, ProcedureCall) {
+  Compile("proc {P X Y} {X X Y} end");
+}
+
+TEST_F(CompileVisitorTest, UnifyParams) {
+  Compile("proc {P X Y} X = Y end");
+}
+
+TEST_F(CompileVisitorTest, UnifyConstant) {
+  Compile("proc {P X Y} X = 1 end");
+}
+
+TEST_F(CompileVisitorTest, Raise) {
+  Compile("proc {P X} raise X end end");
 }
 
 

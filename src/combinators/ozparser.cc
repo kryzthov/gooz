@@ -560,7 +560,9 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
     }
 
     case OzLexemType::RAISE: {
-      return ParseLocal(root);
+      shared_ptr<OzNodeRaise> raise(new OzNodeRaise(*root));
+      raise->exn = ParseLocal(root);
+      return raise;
     }
 
     case OzLexemType::FOR: {
