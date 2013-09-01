@@ -35,6 +35,11 @@ struct Register {
   Register() : type(INVALID), index(-1) {}
   Register(RegisterType ptype, int pindex = 0) : type(ptype), index(pindex) {}
 
+  bool operator==(const Register& that) const {
+    return (type == that.type)
+        && (index == that.index);
+  }
+
   RegisterType type;
   int index;
 };
@@ -80,6 +85,14 @@ struct Operand {
   }
 
   bool invalid() const { return type == INVALID; }
+
+  bool operator==(const Operand& that) const {
+    return (type == that.type)
+        && (reg == that.reg)
+        && (value == that.value);
+  }
+
+  bool operator!=(const Operand& that) const { return !operator==(that); }
 
   OperandType type;
   Register reg;

@@ -280,9 +280,6 @@ void CompileVisitor::Visit(OzNodeNaryOp* node) {
       CompileUnify(node);
       break;
     case OzLexemType::TUPLE_CONS:
-      // TODO:
-      // case OzLexemType::TUPLE_CONS:
-      //   value_ = store::New::Tuple(store_, size, operands);
       CompileTupleCons(node);
       break;
     case OzLexemType::NUMERIC_MUL:
@@ -332,7 +329,35 @@ void CompileVisitor::CompileUnify(OzNodeNaryOp* node) {
 }
 
 void CompileVisitor::CompileTupleCons(OzNodeNaryOp* node) {
-  LOG(FATAL) << "Tuple constructor not implemented yet";
+  CHECK(!result_->statement()) << "Invalid use of tuple as statement.";
+  result_->SetupValuePlaceholder("TupleResult");
+  shared_ptr<ExpressionResult> result = result_;
+
+  // TODO: merge with Visit(OzNodeRecord*) ?
+  Operand size_op(SmallInteger(node->operands.size()).Encode());
+  Operand label_op(KAtomTuple());
+  Operand tuple_op = result_->into();
+  segment_->push_back(
+      Bytecode(Bytecode::NEW_TUPLE, tuple_op, size_op, label_op));
+
+  for (uint64 ival = 0; ival < node->operands.size(); ++ival) {
+    ScopedTemp feat_temp(environment_, "TupleFeatureTemp");
+    segment_->push_back(
+        Bytecode(Bytecode::ACCESS_RECORD,
+                 feat_temp.GetOperand(),
+                 tuple_op,
+                 Operand(SmallInteger(ival + 1).Encode())));
+    result_.reset(new ExpressionResult(feat_temp.symbol()));
+    node->operands[ival]->AcceptVisitor(this);
+    if (result_->value() != feat_temp.GetOperand()) {
+      segment_->push_back(
+          Bytecode(Bytecode::UNIFY,
+                   feat_temp.GetOperand(),
+                   result_->value()));
+    }
+  }
+
+  result_ = result;
 }
 
 void CompileVisitor::CompileMulOrAdd(OzNodeNaryOp* node) {

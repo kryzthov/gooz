@@ -35,7 +35,6 @@ class ExpressionResult {
   ExpressionResult()
       : statement_(true),
         temp_(nullptr) {
-
   }
 
   // Use this constructor when the result value is either immediate or will

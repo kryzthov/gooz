@@ -84,4 +84,8 @@ TEST_F(CompileVisitorTest, Function) {
   );
 }
 
+TEST_F(CompileVisitorTest, Tuple) {
+  Compile("fun {F} 1#2#3 end");
+}
+
 }}  // namespace combinators::oz
