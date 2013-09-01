@@ -30,8 +30,13 @@ void CompileVisitor::Visit(OzNodeGeneric* node) {
     LOG(FATAL) << "Cannot compile generic node: " << node;
   }
 
-  result_.reset(new ExpressionResult);
+  // Top-level has no result:
+  result_.reset(new ExpressionResult);  // statement
+
+  // Top-level allows declaring new variables:
   declaring_ = true;
+
+  // Top-level acts as a procedure (accumulates statements):
   segment_.reset(new vector<Bytecode>);
 
   for (auto def : node->nodes) {
@@ -115,8 +120,24 @@ void CompileVisitor::Visit(OzNodeProc* node) {
     //     fun {Fun Params...} (body) end
     // into:
     //     proc {Fun Params... Result} Result = (body) end
-    LOG(FATAL) << "functions are not implemented";
 
+    shared_ptr<OzNodeVar> return_var(new OzNodeVar);
+    return_var->var_name = "$return_var$";  // TODO: fix this hack :(
+
+    shared_ptr<OzNodeCall> proc_sig(new OzNodeCall(*signature));
+    proc_sig->nodes.push_back(return_var);
+
+    shared_ptr<OzNodeNaryOp> proc_body(new OzNodeNaryOp);
+    proc_body->operation = OzLexem().SetType(OzLexemType::UNIFY);
+    proc_body->operands.push_back(return_var);
+    proc_body->operands.push_back(node->body);
+
+    shared_ptr<OzNodeProc> proc(new OzNodeProc);
+    proc->fun = false;
+    proc->signature = proc_sig;
+    proc->body = proc_body;
+
+    proc->AcceptVisitor(this);
     return;
   }
 

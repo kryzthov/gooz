@@ -76,5 +76,12 @@ TEST_F(CompileVisitorTest, ProcWithLocal) {
   );
 }
 
+TEST_F(CompileVisitorTest, Function) {
+  Compile(
+      "fun {F X}\n"
+      "  X\n"
+      "end\n"
+  );
+}
 
 }}  // namespace combinators::oz
