@@ -93,7 +93,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
 
       break;
     }
-    case OzLexemType::VAR_ANON: {
+    case OzLexemType::EXPR_VAL: {
       CHECK(!result_->statement());
       break;
     }
@@ -397,22 +397,22 @@ void CompileVisitor::Visit(OzNodeCall* node) {
   }
 
   // Determine if there is a return parameter '$':
-  bool has_var_anon = false;
+  bool has_expr_val = false;
   for (uint64 iparam = 1; iparam < node->nodes.size(); ++iparam) {
-    if (node->nodes[iparam]->type == OzLexemType::VAR_ANON) {
-      CHECK(!has_var_anon) << "Invalid call with multiple '$':\n" << *node;
-      has_var_anon = true;
+    if (node->nodes[iparam]->type == OzLexemType::EXPR_VAL) {
+      CHECK(!has_expr_val) << "Invalid call with multiple '$':\n" << *node;
+      has_expr_val = true;
     }
   }
 
   // Return parameter requires this to be an expression:
-  CHECK(!(has_var_anon && !is_statement))
+  CHECK(!(has_expr_val && is_statement))
       << "Invalid statement call with '$':\n" << *node;
 
   // Determine the actual number of parameters for the call,
   // including the implicit return value, if needed:
   uint64 nparams = (node->nodes.size() - 1);
-  if (!is_statement && !has_var_anon) nparams += 1;
+  if (!is_statement && !has_expr_val) nparams += 1;
 
   ScopedTemp params_temp(environment_);
   Operand params_op;  // Invalid by default.
@@ -433,7 +433,7 @@ void CompileVisitor::Visit(OzNodeCall* node) {
       Operand param_op;
       result_.reset(new ExpressionResult(environment_));
 
-      if (param->type == OzLexemType::VAR_ANON) {  // Explicit output parameter
+      if (param->type == OzLexemType::EXPR_VAL) {  // Explicit output parameter
         param_op = result->value();
         segment_->push_back(Bytecode(Bytecode::NEW_VARIABLE, param_op));
 
@@ -451,7 +451,7 @@ void CompileVisitor::Visit(OzNodeCall* node) {
     }
 
     // Initialize the implicit return-value parameter, if needed:
-    if (!is_statement && !has_var_anon) {
+    if (!is_statement && !has_expr_val) {
       Operand param_op = result->value();
       segment_->push_back(Bytecode(Bytecode::NEW_VARIABLE, param_op));
       segment_->push_back(
