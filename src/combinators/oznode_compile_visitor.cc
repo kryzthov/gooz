@@ -31,6 +31,8 @@ void CompileVisitor::Visit(OzNodeGeneric* node) {
   }
 
   result_.reset(new ExpressionResult);
+  declaring_ = true;
+  segment_.reset(new vector<Bytecode>);
 
   for (auto def : node->nodes) {
     def->AcceptVisitor(this);
@@ -64,7 +66,9 @@ void CompileVisitor::Visit(OzNode* node) {
       break;
     }
     case OzLexemType::VAR_ANON: {
-      LOG(FATAL) << "not implemented";  // Bytecode::NEW_VARIABLE
+      result_->SetupValuePlaceholder("NewVariable");
+      segment_->push_back(
+          Bytecode(Bytecode::NEW_VARIABLE, result_->into()));
       break;
     }
     default:
@@ -72,33 +76,38 @@ void CompileVisitor::Visit(OzNode* node) {
   }
 }
 
-
 // virtual
 void CompileVisitor::Visit(OzNodeProc* node) {
-  // proc {$ ...} means there is an expression result
-  // proc {P ...} is a statement: P = proc {$ ...}
   shared_ptr<OzNodeCall> signature =
       std::dynamic_pointer_cast<OzNodeCall>(node->signature);
-  shared_ptr<AbstractOzNode> param0 = signature->nodes[0];
-  switch (param0->type) {
-    case OzLexemType::VARIABLE: {
-      CHECK(result_->statement());
-      shared_ptr<OzNodeVar> proc_var =
-          std::dynamic_pointer_cast<OzNodeVar>(param0);
+  if (signature->nodes[0]->type != OzLexemType::EXPR_VAL) {
+    // Convert statement:
+    //     proc {Proc ...} ... end
+    // into:
+    //     Proc = proc {$ ...} ... end
+    shared_ptr<OzNodeNaryOp> unify(new OzNodeNaryOp);
+    unify->operation = OzLexem().SetType(OzLexemType::UNIFY);
+    unify->operands.push_back(signature->nodes[0]);
 
-      if (environment_->ExistsGlobally(proc_var->var_name)) {
-        const Symbol& symbol = environment_->Get(proc_var->var_name);
-      } else {
-      }
+    shared_ptr<OzNodeCall> expr_sig(new OzNodeCall(*signature));
+    expr_sig->nodes[0] = shared_ptr<AbstractOzNode>(new OzNode);
+    expr_sig->nodes[0]->type = OzLexemType::EXPR_VAL;
 
-      break;
-    }
-    case OzLexemType::EXPR_VAL: {
-      CHECK(!result_->statement());
-      break;
-    }
-    default: LOG(FATAL) << "Invalid procedure: " << node;
+    shared_ptr<OzNodeProc> expr_proc(new OzNodeProc);
+    expr_proc->signature = expr_sig;
+    expr_proc->body = node->body;
+    expr_proc->fun = node->fun;
+
+    unify->operands.push_back(expr_proc);
+
+    unify->AcceptVisitor(this);
+    return;
   }
+
+  CHECK(!result_->statement())
+      << "Procedure value cannot be used as a statement";
+
+  // Compile procedure values (eg. proc {$ ...} ... end) into closures:
 
   // Create a new environment for this procedure,
   // using the current environment as root environment.
@@ -138,11 +147,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   // Restore saved state:
   std::swap(segment_, saved_segment);
 
-  if (result_->statement()) {
-    // proc {P ...}, ie. P = proc {$ ...}
-  } else {
-    result_->SetValue(Operand(store::Optimize(closure).as<Closure>()));
-  }
+  result_->SetValue(Operand(store::Optimize(closure).as<Closure>()));
 }
 
 // virtual
@@ -150,6 +155,14 @@ void CompileVisitor::Visit(OzNodeVar* node) {
   if (result_->statement()) {
     LOG(FATAL) << "Invalid statement: " << node;
   }
+
+  if (declaring_ && !environment_->ExistsLocally(node->var_name)) {
+    const Symbol& symbol = environment_->AddLocal(node->var_name);
+    VLOG(1)
+        << "New local variable: " << node->var_name
+        << " - " << DebugString(symbol);
+  }
+
   const Symbol& symbol = environment_->Get(node->var_name);
   result_->SetValue(symbol.GetOperand());
 }
@@ -232,21 +245,24 @@ void CompileVisitor::Visit(OzNodeNaryOp* node) {
 
   switch (node->operation.type) {
     case OzLexemType::UNIFY:
+      CompileUnify(node);
       break;
     case OzLexemType::TUPLE_CONS:
       // TODO:
       // case OzLexemType::TUPLE_CONS:
       //   value_ = store::New::Tuple(store_, size, operands);
-      LOG(FATAL) << "not implemented";
+      CompileTupleCons(node);
       break;
     case OzLexemType::NUMERIC_MUL:
     case OzLexemType::NUMERIC_ADD:
-      LOG(FATAL) << "not implemented";
+      CompileMulOrAdd(node);
       break;
     default:
       LOG(FATAL) << "invalid n-ary operator: " << node->operation;
   }
+}
 
+void CompileVisitor::CompileUnify(OzNodeNaryOp* node) {
   // The result for the entire unification expression/statement:
   shared_ptr<ExpressionResult> result = result_;
 
@@ -261,10 +277,14 @@ void CompileVisitor::Visit(OzNodeNaryOp* node) {
   // Compute and save the first operand.
   // Other operands will be unified against this one.
   // The first operand is the one being returned, if this is an expression.
+  const bool saved_declaring = declaring_;
+  declaring_ = true;
   node->operands[0]->AcceptVisitor(this);
   shared_ptr<ExpressionResult> first = result_;
+  declaring_ = saved_declaring;
 
-  for (uint i = 1; i < size; ++i) {
+  const uint64 size = node->operands.size();
+  for (uint64 i = 1; i < size; ++i) {
     // Compute the next operand:
     result_.reset(new ExpressionResult(environment_));
     node->operands[i]->AcceptVisitor(this);
@@ -277,6 +297,14 @@ void CompileVisitor::Visit(OzNodeNaryOp* node) {
 
   // Returns the result for this unify expression, if not a statement
   result_ = is_statement ? result : first;
+}
+
+void CompileVisitor::CompileTupleCons(OzNodeNaryOp* node) {
+  LOG(FATAL) << "Tuple constructor not implemented yet";
+}
+
+void CompileVisitor::CompileMulOrAdd(OzNodeNaryOp* node) {
+  LOG(FATAL) << "Multiply/add operator not implemented yet";
 }
 
 // virtual

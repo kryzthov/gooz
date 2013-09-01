@@ -34,6 +34,10 @@ TEST_F(CompileVisitorTest, ProcedureCall1) {
   Compile("proc {P X Y} {X X Y} end");
 }
 
+TEST_F(CompileVisitorTest, ProcedureCallNative) {
+  Compile("proc {Show X} {println X} end");
+}
+
 TEST_F(CompileVisitorTest, ProcedureCall2) {
   Compile("proc {P X Y Z} X = {Y Z} end");
 }
@@ -50,8 +54,12 @@ TEST_F(CompileVisitorTest, UnifyParams) {
   Compile("proc {P X Y} X = Y end");
 }
 
-TEST_F(CompileVisitorTest, UnifyConstant) {
+TEST_F(CompileVisitorTest, UnifyConstantInt) {
   Compile("proc {P X Y} X = 1 end");
+}
+
+TEST_F(CompileVisitorTest, UnifyConstantNewVar) {
+  Compile("proc {P X Y} X = _ end");
 }
 
 TEST_F(CompileVisitorTest, Raise) {

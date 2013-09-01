@@ -97,10 +97,9 @@ class AbstractOzNode {
         tokens(tokens_) {
   }
 
-  virtual ~AbstractOzNode() {}
+  // TODO: Explicit copy-constructor
 
-  OzLexemType type;
-  OzLexemStream tokens;
+  virtual ~AbstractOzNode() {}
 
   inline
   AbstractOzNode& SetType(OzLexemType type_) {
@@ -116,6 +115,8 @@ class AbstractOzNode {
     visitor->Visit(this);                                      \
   }
 
+  OzLexemType type;
+  OzLexemStream tokens;
 };
 
 // -----------------------------------------------------------------------------
@@ -502,6 +503,11 @@ class OzNodeList : public AbstractOzNode {
 // AST node for a function call
 class OzNodeCall : public AbstractOzNode {
  public:
+  OzNodeCall(const OzNodeCall& clone)
+      : AbstractOzNode(clone),
+        nodes(clone.nodes) {
+  }
+
   OzNodeCall(const OzNodeGeneric& node)
       : AbstractOzNode(node),
         nodes(node.nodes) {

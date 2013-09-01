@@ -128,7 +128,8 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   // @param store Creates values in this Oz store.
   CompileVisitor(store::Store* store)
       : store_(CHECK_NOTNULL(store)),
-        environment_(new Environment(nullptr)) {
+        environment_(new Environment(nullptr)),
+        declaring_(false) {
   }
 
   // Destructor.
@@ -174,9 +175,14 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   virtual void Visit(OzNodeUnaryOp* node);
   virtual void Visit(OzNodeVar* node);
 
+
   // ---------------------------------------------------------------------------
 
  private:
+  void CompileUnify(OzNodeNaryOp* node);
+  void CompileTupleCons(OzNodeNaryOp* node);
+  void CompileMulOrAdd(OzNodeNaryOp* node);
+
   // Pushes a nested environment on the environment stack.
   // Automatically pops the environment when going out of scope.
   class NestedEnvironment {
@@ -216,6 +222,13 @@ class CompileVisitor : public AbstractOzNodeVisitor {
 
   // Specification of the expected result of an expression being compiled.
   shared_ptr<ExpressionResult> result_;
+
+  // When true, new variables may be declared.
+  // Places where variables can be declared are:
+  //  - left-operand in a unify
+  //  - patterns in case branches?
+  //  - other?
+  bool declaring_;
 
   DISALLOW_COPY_AND_ASSIGN(CompileVisitor);
 };
