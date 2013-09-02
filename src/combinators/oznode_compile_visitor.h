@@ -229,6 +229,13 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   //  - other?
   bool declaring_;
 
+  // When compiling conditionals, this is the next branch instruction pointer,
+  // as an initially undetermined value.
+  Value cond_next_branch_ip_;
+
+  // Future for the instruction pointer at the end of a conditional.
+  Value cond_end_ip_;
+
   DISALLOW_COPY_AND_ASSIGN(CompileVisitor);
 };
 

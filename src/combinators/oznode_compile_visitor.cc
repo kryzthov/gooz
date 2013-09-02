@@ -397,22 +397,66 @@ void CompileVisitor::Visit(OzNodeLocal* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeCond* node) {
-  LOG(FATAL) << "Cannot evaluate conditionnals";
+  Value saved_cond_next_branch_ip = cond_next_branch_ip_;
+  Value saved_cond_end_ip = cond_end_ip_;
+
+  cond_next_branch_ip_ = Variable::New(store_);
+  cond_end_ip_ = Variable::New(store_);
+
+  const bool is_statement = result_->statement();
+
+  for (auto branch : node->branches) {
+    Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
+    cond_next_branch_ip_ = Variable::New(store_);
+
+    branch->AcceptVisitor(this);
+  }
+
+  if (node->else_branch != nullptr) {
+    Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
+    cond_next_branch_ip_ = Variable::New(store_);
+
+    node->else_branch->AcceptVisitor(this);
+  }
+
+  Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
+  Unify(cond_end_ip_, Value::Integer(segment_->size()));
+
+  cond_next_branch_ip_ = saved_cond_next_branch_ip;
+  cond_end_ip_ = saved_cond_end_ip;
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodeCondBranch* node) {
-  LOG(FATAL) << "Cannot evaluate branches";
+  shared_ptr<ExpressionResult> result = result_;
+
+  // Evaluate the boolean condition for the branch:
+  result_.reset(new ExpressionResult(environment_));
+  node->condition->AcceptVisitor(this);
+
+  // Jump to next branch if condition evaluates to false:
+  segment_->push_back(
+      Bytecode(Bytecode::BRANCH_UNLESS,
+               result_->value(),
+               Operand(cond_next_branch_ip_)));
+
+  // Otherwise, execute branch:
+  result_ = result;
+  node->body->AcceptVisitor(this);
+
+  segment_->push_back(
+      Bytecode(Bytecode::BRANCH,
+               Operand(cond_end_ip_)));
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodePatternMatch* node) {
-  LOG(FATAL) << "Cannot evaluate branches";
+  LOG(FATAL) << "Pattern branching not implemented";
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodePatternBranch* node) {
-  LOG(FATAL) << "Cannot evaluate branches";
+  LOG(FATAL) << "Pattern branching not implemented";
 }
 
 // virtual

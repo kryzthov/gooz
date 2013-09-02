@@ -88,4 +88,16 @@ TEST_F(CompileVisitorTest, Tuple) {
   Compile("fun {F} 1#2#3 end");
 }
 
+TEST_F(CompileVisitorTest, Cond) {
+  Compile(
+      "proc {Proc X}\n"
+      "  if false then\n"
+      "    X = 1\n"
+      "  else\n"
+      "    X = 2\n"
+      "  end\n"
+      "end\n"
+  );
+}
+
 }}  // namespace combinators::oz

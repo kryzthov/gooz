@@ -580,12 +580,10 @@ MidLevelScopeParser::Parse(shared_ptr<OzNodeGeneric>& root) {
       if (!edge_pos.empty()) {
         const int iedge = edge_pos.back();
         if (root->nodes[iedge]->type == OzLexemType::ELSE) {
-          unique_ptr<OzNodeGeneric> else_branch(
+          shared_ptr<OzNodeGeneric> else_slice(
               OzNodeSlice(root->nodes, iedge + 1, root->nodes.size()));
-          if (expr_parser_ != nullptr)
-            expr_parser_->Parse(else_branch.get());
+          cond->else_branch = ParseLocal(else_slice);
 
-          cond->else_branch.reset(else_branch.release());
           edge_pos.pop_back();
           root->nodes.erase(root->nodes.begin() + iedge, root->nodes.end());
         }
