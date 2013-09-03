@@ -108,6 +108,14 @@ TEST_F(CompileVisitorTest, CondExpression) {
   );
 }
 
+TEST_F(CompileVisitorTest, RecordStatic) {
+  Compile(
+      "fun {F X Y Z T}\n"
+      "  record(X 2:Y a:Z b:T)\n"
+      "end\n"
+  );
+}
+
 // TEST_F(CompileVisitorTest, ProcRecursive) {
 //   Compile(
 //       "fun {Factorial N}\n"

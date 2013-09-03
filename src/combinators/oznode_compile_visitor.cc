@@ -201,32 +201,109 @@ void CompileVisitor::Visit(OzNodeVar* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeRecord* node) {
-  // store::Value label = Eval(node->label.get());
-  // store::OpenRecord* record =
-  //     store::New::OpenRecord(store_, label).as<store::OpenRecord>();
+  CHECK(!result_->statement())
+      << "Invalid use of record as a statement";
 
-  // int64 auto_counter = 1;
-  // for (auto feature : node->features->nodes) {
-  //   store::Value feat_label;
-  //   store::Value feat_value;
+  CHECK(!node->open) << "open records not supported yet";
 
-  //   if (feature->type == OzLexemType::RECORD_DEF_FEATURE) {
-  //     OzNodeBinaryOp* def = dynamic_cast<OzNodeBinaryOp*>(feature.get());
-  //     feat_label = Eval(def->lop.get());
-  //     feat_value = Eval(def->rop.get());
-  //   } else {
-  //     feat_label = store::New::Integer(store_, auto_counter);
-  //     feat_value = Eval(feature.get());
-  //   }
-  //   CHECK(record->Set(feat_label, feat_value));
-  //   if (store::HasType(feat_label, store::Value::SMALL_INTEGER)
-  //       && (store::IntValue(feat_label) == auto_counter))
-  //     auto_counter++;
-  // }
-  // if (node->open)
-  //   value_ = record;
-  // else
-  //   value_ = record->GetRecord(store_);
+  shared_ptr<ExpressionResult> result = result_;
+  result->SetupValuePlaceholder("RecordPlaceHolder");
+
+  result_.reset(new ExpressionResult(environment_));
+  node->label->AcceptVisitor(this);
+
+  shared_ptr<ExpressionResult> label_result = result_;
+
+  // TODO: Can we calculate the arity statically?
+  uint64 auto_feature = 1;
+  vector<Value> features;
+  bool static_arity = true;
+  for (auto feature : node->features->nodes) {
+    if (feature->type == OzLexemType::RECORD_DEF_FEATURE) {
+      shared_ptr<OzNodeBinaryOp> def =
+          std::dynamic_pointer_cast<OzNodeBinaryOp>(feature);
+      switch (def->lop->type) {
+        case OzLexemType::ATOM: {
+          shared_ptr<OzNode> feat_node =
+              std::dynamic_pointer_cast<OzNode>(def->lop);
+          const OzLexem& lexem = feat_node->tokens.first();
+          features.push_back(
+              store::New::Atom(store_, boost::get<string>(lexem.value)));
+          break;
+        }
+        case OzLexemType::INTEGER: {
+          shared_ptr<OzNode> feat_node =
+              std::dynamic_pointer_cast<OzNode>(def->lop);
+          const OzLexem& lexem = feat_node->tokens.first();
+          features.push_back(
+              store::New::Integer(store_, boost::get<mpz_class>(lexem.value)));
+          break;
+        }
+        case OzLexemType::VARIABLE: {
+          static_arity = false;
+          goto exit_loop;  // we are done checking
+        }
+        default:
+          LOG(FATAL) << "Invalid record feature label: " << *def->lop;
+      }
+
+    } else {
+      features.push_back(SmallInteger(auto_feature).Encode());
+      auto_feature += 1;
+    }
+  }
+exit_loop:
+
+  result_.reset(new ExpressionResult(environment_));
+  if (static_arity) {
+    Arity* arity = Arity::Get(features);
+    result_->SetValue(Operand(arity));
+  } else {
+    LOG(FATAL) << "Dynamic arities not implemented yet";
+  }
+
+  shared_ptr<ExpressionResult> arity_result = result_;
+
+  segment_->push_back(
+      Bytecode(Bytecode::NEW_RECORD,
+               result->value(),
+               arity_result->value(),
+               label_result->value()));
+
+  // Assign features
+  auto_feature = 1;
+  for (auto feature : node->features->nodes) {
+    shared_ptr<ExpressionResult> label_result(
+        new ExpressionResult(environment_));
+    shared_ptr<ExpressionResult> value_result(
+        new ExpressionResult(environment_));
+
+    if (feature->type == OzLexemType::RECORD_DEF_FEATURE) {
+      shared_ptr<OzNodeBinaryOp> def =
+          std::dynamic_pointer_cast<OzNodeBinaryOp>(feature);
+      result_ = label_result;
+      def->lop->AcceptVisitor(this);
+
+      result_ = value_result;
+      def->rop->AcceptVisitor(this);
+
+    } else {
+      label_result->SetValue(Operand(SmallInteger(auto_feature).Encode()));
+      auto_feature += 1;
+
+      result_ = value_result;
+      feature->AcceptVisitor(this);
+    }
+
+    segment_->push_back(
+        Bytecode(Bytecode::UNIFY_RECORD_FIELD,
+                 result->value(),  // record
+                 label_result->value(),  // feature label
+                 value_result->value()));  // feature value
+  }
+
+  // Return the record:
+  result_ = result;
 }
 
 
