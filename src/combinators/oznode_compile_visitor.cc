@@ -451,7 +451,50 @@ void CompileVisitor::Visit(OzNodeCondBranch* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodePatternMatch* node) {
-  LOG(FATAL) << "Pattern branching not implemented";
+  shared_ptr<ExpressionResult> result = result_;
+
+  shared_ptr<ExpressionResult> matched_val_result(
+      new ExpressionResult(environment_));
+
+  result_ = matched_val_result;
+  node->value->AcceptVisitor(this);
+  result_ = result;
+
+  Operand matched_val = matched_val_result->value();
+
+  for (auto branch : node->branches) {
+    shared_ptr<OzNodePatternBranch> pbranch =
+        std::dynamic_pointer_cast<OzNodePatternBranch>(branch);
+
+    // TODO: Evaluate pattern
+    // pbranch->pattern->AcceptVisitor(this);
+    LOG(FATAL) << "not implemented";
+
+    // Jump to next branch if condition evaluates to false:
+    segment_->push_back(
+        Bytecode(Bytecode::BRANCH_UNLESS,
+                 result_->value(),  // FIXME
+                 Operand(cond_next_branch_ip_)));
+
+    if (pbranch->condition != nullptr) {
+      result_.reset(new ExpressionResult(environment_));
+      pbranch->condition->AcceptVisitor(this);
+
+      // Jump to next branch if condition evaluates to false:
+      segment_->push_back(
+          Bytecode(Bytecode::BRANCH_UNLESS,
+                   result_->value(),
+                   Operand(cond_next_branch_ip_)));
+
+      result_ = result;
+    }
+
+    pbranch->body->AcceptVisitor(this);
+
+    segment_->push_back(
+        Bytecode(Bytecode::BRANCH,
+                 Operand(cond_end_ip_)));
+  }
 }
 
 // virtual
