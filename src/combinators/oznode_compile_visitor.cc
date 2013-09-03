@@ -399,17 +399,22 @@ void CompileVisitor::Visit(OzNodeLocal* node) {
 void CompileVisitor::Visit(OzNodeCond* node) {
   Value saved_cond_next_branch_ip = cond_next_branch_ip_;
   Value saved_cond_end_ip = cond_end_ip_;
+  shared_ptr<ExpressionResult> result = result_;
 
   cond_next_branch_ip_ = Variable::New(store_);
   cond_end_ip_ = Variable::New(store_);
 
   const bool is_statement = result_->statement();
+  if (!is_statement) {
+    // Forces the result to be stored in this place-holder:
+    result_->SetupValuePlaceholder("ConditionalResultValue");
+  }
 
   for (auto branch : node->branches) {
     Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
     cond_next_branch_ip_ = Variable::New(store_);
 
-    branch->AcceptVisitor(this);
+    branch->AcceptVisitor(this);  // enforces result in place-holder
   }
 
   if (node->else_branch != nullptr) {
@@ -417,6 +422,14 @@ void CompileVisitor::Visit(OzNodeCond* node) {
     cond_next_branch_ip_ = Variable::New(store_);
 
     node->else_branch->AcceptVisitor(this);
+
+    if (!is_statement && (result_->value() != result_->into())) {
+      // enforces result in place-holder:
+      segment_->push_back(
+          Bytecode(Bytecode::UNIFY,
+                   result_->value(),
+                   result_->into()));
+    }
   }
 
   Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
@@ -424,6 +437,10 @@ void CompileVisitor::Visit(OzNodeCond* node) {
 
   cond_next_branch_ip_ = saved_cond_next_branch_ip;
   cond_end_ip_ = saved_cond_end_ip;
+  result_ = result;
+  if (!is_statement) {
+    result_->SetValue(result_->into());  // acknowledge result in place-holder
+  }
 }
 
 // virtual
@@ -443,6 +460,14 @@ void CompileVisitor::Visit(OzNodeCondBranch* node) {
   // Otherwise, execute branch:
   result_ = result;
   node->body->AcceptVisitor(this);
+
+  if (!result_->statement() && (result_->value() != result_->into())) {
+    // enforces result in place-holder:
+    segment_->push_back(
+        Bytecode(Bytecode::UNIFY,
+                 result_->value(),
+                 result_->into()));
+  }
 
   segment_->push_back(
       Bytecode(Bytecode::BRANCH,

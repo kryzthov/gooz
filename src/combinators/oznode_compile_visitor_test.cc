@@ -88,7 +88,7 @@ TEST_F(CompileVisitorTest, Tuple) {
   Compile("fun {F} 1#2#3 end");
 }
 
-TEST_F(CompileVisitorTest, Cond) {
+TEST_F(CompileVisitorTest, CondStatement) {
   Compile(
       "proc {Proc X}\n"
       "  if false then\n"
@@ -99,5 +99,21 @@ TEST_F(CompileVisitorTest, Cond) {
       "end\n"
   );
 }
+
+TEST_F(CompileVisitorTest, CondExpression) {
+  Compile(
+      "proc {Proc X}\n"
+      "  X = if false then 1 else 2 end\n"
+      "end\n"
+  );
+}
+
+// TEST_F(CompileVisitorTest, ProcRecursive) {
+//   Compile(
+//       "fun {Factorial N}\n"
+//       "  if N == 0 then 1 else N * {Factorial (N - 1)} end\n"
+//       "end\n"
+//   );
+// }
 
 }}  // namespace combinators::oz
