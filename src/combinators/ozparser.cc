@@ -724,7 +724,6 @@ void ExpressionParser::Parse(OzNodeGeneric* const branch) {
   ParseBinaryOperatorRTL(branch, OzLexemType::OR_ELSE);
 
 
-  ParseNaryOperator(branch, OzLexemType::UNIFY);
   ParseBinaryOperatorLTR(branch, OzLexemType::CELL_ASSIGN);
   ParseBinaryOperatorLTR(branch, OzLexemType::ATTR_ASSIGN);
 
@@ -732,6 +731,8 @@ void ExpressionParser::Parse(OzNodeGeneric* const branch) {
   ParseNaryOperator(branch, OzLexemType::TUPLE_CONS);
 
   ParseBinaryOperatorLTR(branch, OzLexemType::RECORD_DEF_FEATURE);
+
+  ParseNaryOperator(branch, OzLexemType::UNIFY);
 
   VLOG(2) << "Exiting " << __PRETTY_FUNCTION__
           << " with output node:\n" << *branch;

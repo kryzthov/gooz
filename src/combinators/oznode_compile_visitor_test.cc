@@ -124,6 +124,22 @@ TEST_F(CompileVisitorTest, ListSimple) {
   );
 }
 
+TEST_F(CompileVisitorTest, ListConstructor) {
+  Compile(
+      "fun {F X Y Z T}\n"
+      "  1 | X | 2 | Y | 3\n"
+      "end\n"
+  );
+}
+
+TEST_F(CompileVisitorTest, RecordAccess) {
+  Compile(
+      "proc {F X Y}\n"
+      "  X.Y = 1\n"
+      "end\n"
+  );
+}
+
 // TEST_F(CompileVisitorTest, ProcRecursive) {
 //   Compile(
 //       "fun {Factorial N}\n"

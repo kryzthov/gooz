@@ -309,17 +309,69 @@ exit_loop:
 
 // virtual
 void CompileVisitor::Visit(OzNodeBinaryOp* node) {
-  // store::Value lop = Eval(node->lop.get());
-  // store::Value rop = Eval(node->rop.get());
+  CHECK(!result_->statement())
+      << "Invalid use of binary expression as statement.";
 
-  // switch (node->type) {
-  //   case OzLexemType::LIST_CONS: {
-  //     value_ = store::New::List(store_, lop, rop);
-  //     break;
-  //   }
-  //   default:
-  //     LOG(FATAL) << "Binary operator not supported: " << node->type;
-  // }
+  shared_ptr<ExpressionResult> result = result_;
+
+  result_.reset(new ExpressionResult(environment_));
+  node->lop->AcceptVisitor(this);
+  shared_ptr<ExpressionResult> lop_result = result_;
+
+  result_.reset(new ExpressionResult(environment_));
+  node->rop->AcceptVisitor(this);
+  shared_ptr<ExpressionResult> rop_result = result_;
+
+  result_ = result;
+
+  switch (node->operation.type) {
+    case OzLexemType::LIST_CONS: {
+      result_->SetupValuePlaceholder("ListConstructorResult");
+      segment_->push_back(
+          Bytecode(Bytecode::NEW_LIST,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
+    case OzLexemType::EQUAL: {
+      result_->SetupValuePlaceholder("EqualityTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::TEST_EQUALITY,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
+    case OzLexemType::LESS_THAN: {
+      result_->SetupValuePlaceholder("LessThanTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::TEST_LESS_THAN,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
+    case OzLexemType::CELL_ASSIGN: {
+      LOG(FATAL) << "Cell assignment has no result, ie. is a statement!";
+      segment_->push_back(
+          Bytecode(Bytecode::ASSIGN_CELL,
+                   lop_result->value(),  // cell
+                   rop_result->value()));  // value
+      break;
+    }
+    case OzLexemType::RECORD_ACCESS: {
+      result_->SetupValuePlaceholder("LessThanTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::ACCESS_RECORD,
+                   result_->value(),
+                   lop_result->value(),  // record
+                   rop_result->value()));  // feature
+      break;
+    }
+    default:
+      LOG(FATAL) << "Invalid or unsupported binary operator: " << node->type;
+  }
 }
 
 // virtual
