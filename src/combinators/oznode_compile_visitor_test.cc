@@ -116,6 +116,14 @@ TEST_F(CompileVisitorTest, RecordStatic) {
   );
 }
 
+TEST_F(CompileVisitorTest, ListSimple) {
+  Compile(
+      "fun {F X Y Z T}\n"
+      "  [1 X 2 Y 3]\n"
+      "end\n"
+  );
+}
+
 // TEST_F(CompileVisitorTest, ProcRecursive) {
 //   Compile(
 //       "fun {Factorial N}\n"

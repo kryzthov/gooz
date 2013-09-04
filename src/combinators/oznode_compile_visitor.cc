@@ -764,7 +764,33 @@ void CompileVisitor::Visit(OzNodeCall* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeList* node) {
-  LOG(FATAL) << "not implemented";
+  CHECK(!result_->statement())
+      << "Invalid use of list as statement.";
+  shared_ptr<ExpressionResult> result = result_;
+
+  vector<shared_ptr<ExpressionResult> > elements;
+  for (auto element : node->nodes) {
+    result_.reset(new ExpressionResult(environment_));
+    element->AcceptVisitor(this);
+    elements.push_back(result_);
+  }
+
+  ScopedTemp temp(environment_, "ListBuilder");
+  segment_->push_back(
+      Bytecode(Bytecode::LOAD,
+               temp.GetOperand(),  // dest
+               Operand(KAtomNil())));  // src
+
+  for (int64 ielt = elements.size() - 1; ielt >= 0; --ielt) {
+    segment_->push_back(
+        Bytecode(Bytecode::NEW_LIST,
+                 temp.GetOperand(),  // into
+                 elements[ielt]->value(),  // head
+                 temp.GetOperand()));  // tail
+  }
+
+  result_ = result;
+  result_->SetValue(temp.GetOperand());
 }
 
 
