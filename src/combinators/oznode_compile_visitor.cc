@@ -309,9 +309,6 @@ exit_loop:
 
 // virtual
 void CompileVisitor::Visit(OzNodeBinaryOp* node) {
-  CHECK(!result_->statement())
-      << "Invalid use of binary expression as statement.";
-
   shared_ptr<ExpressionResult> result = result_;
 
   result_.reset(new ExpressionResult(environment_));
@@ -326,6 +323,8 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
 
   switch (node->operation.type) {
     case OzLexemType::LIST_CONS: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("ListConstructorResult");
       segment_->push_back(
           Bytecode(Bytecode::NEW_LIST,
@@ -335,6 +334,8 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
       break;
     }
     case OzLexemType::EQUAL: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("EqualityTestResult");
       segment_->push_back(
           Bytecode(Bytecode::TEST_EQUALITY,
@@ -344,6 +345,8 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
       break;
     }
     case OzLexemType::LESS_THAN: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("LessThanTestResult");
       segment_->push_back(
           Bytecode(Bytecode::TEST_LESS_THAN,
@@ -352,8 +355,41 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
                    rop_result->value()));
       break;
     }
+    case OzLexemType::LESS_OR_EQUAL: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
+      result_->SetupValuePlaceholder("LessOrEqualTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::TEST_LESS_OR_EQUAL,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
+    case OzLexemType::GREATER_THAN: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
+      result_->SetupValuePlaceholder("GreaterThanTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::TEST_LESS_THAN,
+                   result_->value(),
+                   rop_result->value(),
+                   lop_result->value()));
+      break;
+    }
+    case OzLexemType::GREATER_OR_EQUAL: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
+      result_->SetupValuePlaceholder("GreaterOrEqualTestResult");
+      segment_->push_back(
+          Bytecode(Bytecode::TEST_LESS_OR_EQUAL,
+                   result_->value(),
+                   rop_result->value(),
+                   lop_result->value()));
+      break;
+    }
     case OzLexemType::CELL_ASSIGN: {
-      LOG(FATAL) << "Cell assignment has no result, ie. is a statement!";
+      // TODO: ASSIGN_CELL as an expression (atomic read+write)
       segment_->push_back(
           Bytecode(Bytecode::ASSIGN_CELL,
                    lop_result->value(),  // cell
@@ -361,7 +397,9 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
       break;
     }
     case OzLexemType::RECORD_ACCESS: {
-      result_->SetupValuePlaceholder("LessThanTestResult");
+      // TODO: optimize this when used as an operand in a unify operation
+      //     using Bytecode::UNIFY_RECORD_FIELD.
+      result_->SetupValuePlaceholder("RecordAccessResult");
       segment_->push_back(
           Bytecode(Bytecode::ACCESS_RECORD,
                    result_->value(),
