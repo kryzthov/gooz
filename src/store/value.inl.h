@@ -324,6 +324,11 @@ class New {
   }
 
   static inline
+  Value Boolean(Store* store, bool boolean) {
+    return boolean ? KAtomTrue() : KAtomFalse();
+  }
+
+  static inline
   Value Integer(Store* store, int64 integer) {
     if (SmallInteger::IsSmallInt(integer))
       return SmallInteger(integer).Encode();
