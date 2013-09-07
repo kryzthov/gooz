@@ -552,16 +552,157 @@ Thread::ThreadState Thread::Run(
         break;
       }
 
-      case Bytecode::NUMBER_ADD: {
+      case Bytecode::TEST_LESS_OR_EQUAL: {
+        Value value1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(value1)) goto suspended;
+        if (!(value1.caps() & Value::CAP_LITERAL)) goto bad_operand;
+        Value value2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(value2)) goto suspended;
+        if (!(value2.caps() & Value::CAP_LITERAL)) goto bad_operand;
+        const bool less_or_equal =
+            value1.LiteralLessThan(value2) || value1.LiteralEquals(value2);
+        RSet(inst.operand1, Boolean::Get(less_or_equal));
+        break;
+      }
+
+      case Bytecode::NUMBER_INT_INVERSE: {
+        Value number1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(number1)) goto suspended;
+
+        // TODO: handle big integers
+        RSet(inst.operand1, Value::Integer(-IntValue(number1)));
+        break;
+      }
+
+      case Bytecode::NUMBER_INT_ADD: {
         Value number1 = OpGet(inst.operand2).Deref();
         if (WaitOn(number1)) goto suspended;
 
         Value number2 = OpGet(inst.operand3).Deref();
         if (WaitOn(number2)) goto suspended;
 
-        // TODO: Implement properly
+        // TODO: handle big integers
         RSet(inst.operand1,
              Value::Integer(IntValue(number1) + IntValue(number2)));
+        break;
+      }
+
+      case Bytecode::NUMBER_INT_SUBTRACT: {
+        Value number1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(number1)) goto suspended;
+
+        Value number2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(number2)) goto suspended;
+
+        // TODO: handle big integers
+        RSet(inst.operand1,
+             Value::Integer(IntValue(number1) - IntValue(number2)));
+        break;
+      }
+
+      case Bytecode::NUMBER_INT_MULTIPLY: {
+        Value number1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(number1)) goto suspended;
+
+        Value number2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(number2)) goto suspended;
+
+        // TODO: handle big integers
+        RSet(inst.operand1,
+             Value::Integer(IntValue(number1) * IntValue(number2)));
+        break;
+      }
+
+      case Bytecode::NUMBER_INT_DIVIDE: {
+        Value number1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(number1)) goto suspended;
+
+        Value number2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(number2)) goto suspended;
+
+        // TODO: handle big integers
+        RSet(inst.operand1,
+             Value::Integer(IntValue(number1) / IntValue(number2)));
+        break;
+      }
+
+      case Bytecode::NUMBER_BOOL_NEGATE: {
+        Value boolean = OpGet(inst.operand2).Deref();
+        if (WaitOn(boolean)) goto suspended;
+
+        Value negated;
+        if (boolean == KAtomTrue()) {
+          negated = KAtomFalse();
+        } else if (boolean == KAtomFalse()) {
+          negated = KAtomTrue();
+        } else {
+          goto bad_operand;
+        }
+        RSet(inst.operand1, negated);
+        break;
+      }
+
+      case Bytecode::NUMBER_BOOL_AND_THEN: {
+        Value bool1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(bool1)) goto suspended;
+
+        if (bool1 == KAtomTrue()) {
+          // Move on
+        } else if (bool1 == KAtomFalse()) {
+          RSet(inst.operand1, KAtomFalse());
+        } else {
+          goto bad_operand;
+        }
+
+        Value bool2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(bool2)) goto suspended;
+
+        if ((bool2 != KAtomTrue()) && (bool2 != KAtomFalse())) {
+          goto bad_operand;
+        }
+        RSet(inst.operand1, bool2);
+        break;
+      }
+
+      case Bytecode::NUMBER_BOOL_OR_ELSE: {
+        Value bool1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(bool1)) goto suspended;
+
+        if (bool1 == KAtomTrue()) {
+          RSet(inst.operand1, KAtomTrue());
+        } else if (bool1 == KAtomFalse()) {
+          // Move on
+        } else {
+          goto bad_operand;
+        }
+
+        Value bool2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(bool2)) goto suspended;
+
+        if ((bool2 != KAtomTrue()) && (bool2 != KAtomFalse())) {
+          goto bad_operand;
+        }
+        RSet(inst.operand1, bool2);
+        break;
+      }
+
+      case Bytecode::NUMBER_BOOL_XOR: {
+        Value bool1 = OpGet(inst.operand2).Deref();
+        if (WaitOn(bool1)) goto suspended;
+
+        if ((bool1 != KAtomTrue()) && (bool1 != KAtomFalse())) {
+          goto bad_operand;
+        }
+
+        Value bool2 = OpGet(inst.operand3).Deref();
+        if (WaitOn(bool2)) goto suspended;
+
+        if ((bool2 != KAtomTrue()) && (bool2 != KAtomFalse())) {
+          goto bad_operand;
+        }
+
+        Value xored = (bool1 == bool2) ? KAtomFalse() : KAtomTrue();
+        RSet(inst.operand1, xored);
         break;
       }
 

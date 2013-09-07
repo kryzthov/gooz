@@ -72,12 +72,24 @@ struct Bytecode {
     TEST_IS_DET,
     TEST_IS_RECORD,
 
-    TEST_EQUALITY,
+    TEST_EQUALITY,  // deep value equality
+
+    // Literals only:
     TEST_LESS_THAN,
+    TEST_LESS_OR_EQUAL,
 
     TEST_ARITY_EXTENDS,
 
-    NUMBER_ADD,
+    NUMBER_INT_INVERSE,
+    NUMBER_INT_ADD,
+    NUMBER_INT_SUBTRACT,
+    NUMBER_INT_MULTIPLY,
+    NUMBER_INT_DIVIDE,
+
+    NUMBER_BOOL_NEGATE,
+    NUMBER_BOOL_AND_THEN,  // lazy
+    NUMBER_BOOL_OR_ELSE,  // lazy
+    NUMBER_BOOL_XOR,
 
     OPCODE_TYPE_COUNT,
   };

@@ -443,7 +443,7 @@ void Compiler::CompileLoop(OzValue loop) {
 
   // Update iterator
   if (has_range) {
-    segment_->push_back(Bytecode(Bytecode::NUMBER_ADD,
+    segment_->push_back(Bytecode(Bytecode::NUMBER_INT_ADD,
                                  iterator,
                                  iterator,
                                  Operand(Value::Integer(1))));

@@ -55,7 +55,9 @@ static const OpcodeSpec kOpcodeSpecTable[] = {
   OpcodeSpec("access_open_record_arity", Bytecode::ACCESS_OPEN_RECORD_ARITY,
              "in", "record"),
 
+  // TODO: assign_cell should return the former cell value
   OpcodeSpec("assign_cell", Bytecode::ASSIGN_CELL, "cell", "value"),
+  // TODO: assign_array should return the former value
   OpcodeSpec("assign_array", Bytecode::ASSIGN_ARRAY, "array", "index", "value"),
 
   OpcodeSpec("test_is_det", Bytecode::TEST_IS_DET,
@@ -63,16 +65,48 @@ static const OpcodeSpec kOpcodeSpecTable[] = {
   OpcodeSpec("test_is_record", Bytecode::TEST_IS_RECORD,
              "in", "value"),
 
+  // Deep value equality:
   OpcodeSpec("test_equality", Bytecode::TEST_EQUALITY,
              "in", "value1", "value2"),
+
+  // Literal comparison:
   OpcodeSpec("test_less_than", Bytecode::TEST_LESS_THAN,
+             "in", "value1", "value2"),
+  OpcodeSpec("test_less_or_equal", Bytecode::TEST_LESS_OR_EQUAL,
              "in", "value1", "value2"),
 
   OpcodeSpec("test_arity_extends", Bytecode::TEST_ARITY_EXTENDS,
              "in", "super", "sub"),
 
-  OpcodeSpec("number_add", Bytecode::NUMBER_ADD,
-             "in", "number1", "number2"),
+  // Integer operations:
+  OpcodeSpec("number_int_inverse",
+             Bytecode::NUMBER_INT_INVERSE,
+             "in", "int"),
+  OpcodeSpec("number_int_add",
+             Bytecode::NUMBER_INT_ADD,
+             "in", "int1", "int2"),
+  OpcodeSpec("number_int_subtract",
+             Bytecode::NUMBER_INT_SUBTRACT,
+             "in", "int1", "int2"),
+  OpcodeSpec("number_int_multiply",
+             Bytecode::NUMBER_INT_MULTIPLY,
+             "in", "int1", "int2"),
+  OpcodeSpec("number_int_divide",
+             Bytecode::NUMBER_INT_DIVIDE,
+             "in", "int1", "int2"),
+
+  OpcodeSpec("number_bool_negate",
+             Bytecode::NUMBER_BOOL_NEGATE,
+             "in", "bool"),
+  OpcodeSpec("number_and_then",
+             Bytecode::NUMBER_BOOL_AND_THEN,
+             "in", "bool1", "bool2"),
+  OpcodeSpec("number_bool_or_else",
+             Bytecode::NUMBER_BOOL_OR_ELSE,
+             "in", "bool1", "bool2"),
+  OpcodeSpec("number_bool_xor",
+             Bytecode::NUMBER_BOOL_XOR,
+             "in", "bool1", "bool2"),
 };
 
 OpcodeSpecMap::OpcodeSpecMap() {
