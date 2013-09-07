@@ -8,6 +8,7 @@ static const OpcodeSpec kOpcodeSpecTable[] = {
 
   OpcodeSpec("load", Bytecode::LOAD, "dest", "src"),
   OpcodeSpec("unify", Bytecode::UNIFY, "value1", "value2"),
+  OpcodeSpec("try_unify", Bytecode::TRY_UNIFY, "value1", "value2", "success"),
   OpcodeSpec("unify_record_field", Bytecode::UNIFY_RECORD_FIELD,
              "record", "feature", "value"),
 

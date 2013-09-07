@@ -61,7 +61,25 @@ Thread::ThreadState Thread::Run(
       }
 
       case Bytecode::UNIFY: {
-        store::Unify(OpGet(inst.operand1), OpGet(inst.operand2), new_runnable);
+        const bool success =
+            store::Unify(
+                OpGet(inst.operand1),
+                OpGet(inst.operand2),
+                new_runnable);
+        if (!success) {
+          // TODO: throw an exception instead
+          goto bad_operand;
+        }
+        break;
+      }
+
+      case Bytecode::TRY_UNIFY: {
+        const bool success =
+            store::Unify(
+                OpGet(inst.operand1),
+                OpGet(inst.operand2),
+                new_runnable);
+        RSet(inst.operand3, success ? KAtomTrue() : KAtomFalse());
         break;
       }
 

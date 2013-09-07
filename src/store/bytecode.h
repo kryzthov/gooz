@@ -19,6 +19,7 @@ struct Bytecode {
 
     LOAD,
     UNIFY,
+    TRY_UNIFY,
     UNIFY_RECORD_FIELD,
 
     // Control-flow

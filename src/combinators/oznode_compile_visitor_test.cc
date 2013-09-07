@@ -140,6 +140,16 @@ TEST_F(CompileVisitorTest, RecordAccess) {
   );
 }
 
+TEST_F(CompileVisitorTest, TuplePattern) {
+  Compile(
+      "proc {F Z T}\n"
+      "  X # Y = Z\n"
+      "in\n"
+      "  T = X\n"
+      "end\n"
+  );
+}
+
 // TEST_F(CompileVisitorTest, ProcRecursive) {
 //   Compile(
 //       "fun {Factorial N}\n"
