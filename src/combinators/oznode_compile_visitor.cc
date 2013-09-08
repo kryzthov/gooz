@@ -407,6 +407,28 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
                    rop_result->value()));  // feature
       break;
     }
+    case OzLexemType::NUMERIC_MINUS: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
+      result_->SetupValuePlaceholder("NumericMinusResult");
+      segment_->push_back(
+          Bytecode(Bytecode::NUMBER_INT_SUBTRACT,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
+    case OzLexemType::NUMERIC_DIV: {
+      CHECK(!result_->statement())
+          << "Invalid use of binary expression as statement.";
+      result_->SetupValuePlaceholder("NumericDivResult");
+      segment_->push_back(
+          Bytecode(Bytecode::NUMBER_INT_DIVIDE,
+                   result_->value(),
+                   lop_result->value(),
+                   rop_result->value()));
+      break;
+    }
     default:
       LOG(FATAL) << "Invalid or unsupported binary operator: " << node->type;
   }
@@ -789,6 +811,9 @@ void CompileVisitor::Visit(OzNodeCall* node) {
   shared_ptr<ExpressionResult> result = result_;
   const bool is_statement = result->statement();
 
+  const bool saved_declaring = declaring_;
+  declaring_ = false;
+
   if (!is_statement) {
     result->SetupValuePlaceholder("CallReturnPlaceholder");
   }
@@ -879,6 +904,7 @@ void CompileVisitor::Visit(OzNodeCall* node) {
 
   // Result for this call expression/statement:
   result_ = result;
+  declaring_ = saved_declaring;
 }
 
 // virtual
