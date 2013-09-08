@@ -71,8 +71,8 @@ class ExpressionResult {
 
   // Validates or creates a place-holder for the result value.
   //
-  // If no result place-holder symbol has already set, this allocates a
-  // temporary register.
+  // If no result place-holder symbol has already been set,
+  // this allocates a temporary register.
   //
   // @returns the place-holder operand.
   const Operand& SetupValuePlaceholder(const string& description = "") {
@@ -141,7 +141,7 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   store::Value Compile(AbstractOzNode* node) {
     LOG(INFO) << "Compiling:\n" << *node;
     node->AcceptVisitor(this);
-    return top_level_;
+    return top_level();
   }
 
   virtual void Visit(OzNodeError* node) {
@@ -182,6 +182,48 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   void CompileUnify(OzNodeNaryOp* node);
   void CompileTupleCons(OzNodeNaryOp* node);
   void CompileMulOrAdd(OzNodeNaryOp* node);
+
+  // Returns the arity of the record if it is known statically, or null.
+  Arity* GetStaticArity(OzNodeRecord* record);
+
+  // Compile a statement.
+  void CompileStatement(shared_ptr<AbstractOzNode> node) {
+    shared_ptr<ExpressionResult> result_saved = result_;
+    result_.reset(new ExpressionResult);  // statement result
+    node->AcceptVisitor(this);
+    result_ = result_saved;
+  }
+
+  // Compile an expression.
+  shared_ptr<ExpressionResult> CompileExpression(
+      shared_ptr<AbstractOzNode> node) {
+
+    shared_ptr<ExpressionResult> result = result_;
+    result_.reset(new ExpressionResult(environment_));
+    node->AcceptVisitor(this);
+    std::swap(result, result_);
+    return result;
+  }
+
+  shared_ptr<ExpressionResult> CompileExpression(
+      shared_ptr<AbstractOzNode> node,
+      shared_ptr<ExpressionResult> result) {
+    CHECK(!result->statement());
+    Compile(node, result);
+    return result;
+  }
+
+  // Compile a statement or an expression.
+  void Compile(shared_ptr<AbstractOzNode> node,
+               shared_ptr<ExpressionResult> result) {
+    shared_ptr<ExpressionResult> result_saved = result_;
+    result_ = result;
+    node->AcceptVisitor(this);
+    result_ = result_saved;
+  }
+
+  inline bool IsExpression() const { return !result_->statement(); }
+  inline bool IsStatement() const { return result_->statement(); }
 
   // Pushes a nested environment on the environment stack.
   // Automatically pops the environment when going out of scope.

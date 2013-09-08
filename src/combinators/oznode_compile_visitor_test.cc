@@ -92,6 +92,14 @@ TEST_F(CompileVisitorTest, UnifyConstantNewVar) {
   Compile("proc {P X Y} X = _ end");
 }
 
+TEST_F(CompileVisitorTest, UnifyAsExpression) {
+  Compile(
+      "proc {P X Y Z}\n"
+      "  X = (Y = Z)\n"
+      "end\n"
+  );
+}
+
 TEST_F(CompileVisitorTest, Raise) {
   Compile("proc {P X} raise X end end");
 }
@@ -114,8 +122,12 @@ TEST_F(CompileVisitorTest, Function) {
   );
 }
 
-TEST_F(CompileVisitorTest, Tuple) {
+TEST_F(CompileVisitorTest, TupleSimple) {
   Compile("fun {F} 1#2#3 end");
+}
+
+TEST_F(CompileVisitorTest, Tuple2) {
+  Compile("fun {F X Y} X#2#(X+Y) end");
 }
 
 TEST_F(CompileVisitorTest, CondStatement) {

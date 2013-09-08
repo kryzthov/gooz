@@ -40,7 +40,7 @@ void CompileVisitor::Visit(OzNodeGeneric* node) {
   segment_.reset(new vector<Bytecode>);
 
   for (auto def : node->nodes) {
-    def->AcceptVisitor(this);
+    CompileStatement(def);
   }
 
   CHECK_EQ(0, environment_->nparams());
@@ -95,7 +95,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   shared_ptr<OzNodeCall> signature =
       std::dynamic_pointer_cast<OzNodeCall>(node->signature);
   if (signature->nodes[0]->type != OzLexemType::EXPR_VAL) {
-    CHECK(result_->statement());
+    CHECK(IsStatement());
 
     // Convert statement:
     //     proc {Proc ...} ... end
@@ -116,13 +116,11 @@ void CompileVisitor::Visit(OzNodeProc* node) {
 
     unify->operands.push_back(expr_proc);
 
-    unify->AcceptVisitor(this);
+    Compile(unify, result_);
     return;
   }
 
-  CHECK(!result_->statement())
-      << "Procedure value cannot be used as a statement";
-  shared_ptr<ExpressionResult> result = result_;
+  CHECK(IsExpression()) << "Procedure value cannot be used as a statement";
 
   if (node->fun) {
     // TODO: rewrite:
@@ -146,7 +144,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
     proc->signature = proc_sig;
     proc->body = proc_body;
 
-    proc->AcceptVisitor(this);
+    CompileExpression(proc, result_);
     return;
   }
 
@@ -167,8 +165,7 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   }
 
   // After normalization, procedure body is necessarily a statement:
-  result_.reset(new ExpressionResult);
-  node->body->AcceptVisitor(this);
+  CompileStatement(node->body);
 
   // Generate the Closure with the number of registers from the environment.
   const uint64 nparams = environment_->nparams();
@@ -187,15 +184,12 @@ void CompileVisitor::Visit(OzNodeProc* node) {
   // Restore saved state:
   std::swap(segment_, saved_segment);
 
-  result_ = result;
   result_->SetValue(Operand(store::Optimize(closure).as<Closure>()));
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodeVar* node) {
-  if (result_->statement()) {
-    LOG(FATAL) << "Invalid statement: " << node;
-  }
+  CHECK(IsExpression()) << "Invalid statement: " << node;
 
   if (declaring_
       && !node->no_declare
@@ -210,26 +204,10 @@ void CompileVisitor::Visit(OzNodeVar* node) {
   result_->SetValue(symbol.GetOperand());
 }
 
-// virtual
-void CompileVisitor::Visit(OzNodeRecord* node) {
-  CHECK(!result_->statement())
-      << "Invalid use of record as a statement";
-
-  CHECK(!node->open) << "open records not supported yet";
-
-  shared_ptr<ExpressionResult> result = result_;
-  result->SetupValuePlaceholder("RecordPlaceHolder");
-
-  result_.reset(new ExpressionResult(environment_));
-  node->label->AcceptVisitor(this);
-
-  shared_ptr<ExpressionResult> label_result = result_;
-
-  // TODO: Can we calculate the arity statically?
+Arity* CompileVisitor::GetStaticArity(OzNodeRecord* record) {
   uint64 auto_feature = 1;
   vector<Value> features;
-  bool static_arity = true;
-  for (auto feature : node->features->nodes) {
+  for (auto feature : record->features->nodes) {
     if (feature->type == OzLexemType::RECORD_DEF_FEATURE) {
       shared_ptr<OzNodeBinaryOp> def =
           std::dynamic_pointer_cast<OzNodeBinaryOp>(feature);
@@ -251,8 +229,9 @@ void CompileVisitor::Visit(OzNodeRecord* node) {
           break;
         }
         case OzLexemType::VARIABLE: {
-          static_arity = false;
-          goto exit_loop;  // we are done checking
+          // Cannot evaluate arity statically:
+          // We could push static analyzis further...
+          return nullptr;
         }
         default:
           LOG(FATAL) << "Invalid record feature label: " << *def->lop;
@@ -263,148 +242,140 @@ void CompileVisitor::Visit(OzNodeRecord* node) {
       auto_feature += 1;
     }
   }
-exit_loop:
+  return Arity::Get(features);
+}
 
-  result_.reset(new ExpressionResult(environment_));
-  if (static_arity) {
-    Arity* arity = Arity::Get(features);
-    result_->SetValue(Operand(arity));
-  } else {
+// virtual
+void CompileVisitor::Visit(OzNodeRecord* node) {
+  CHECK(IsExpression()) << "Invalid use of record as a statement";
+  CHECK(!node->open) << "open records not supported yet";
+
+  shared_ptr<ExpressionResult> record_label_result =
+      CompileExpression(node->label);
+
+  // Is the arity known statically?
+  Arity* arity = GetStaticArity(node);
+  shared_ptr<ExpressionResult> arity_result(
+      new ExpressionResult(environment_));
+  if (arity == nullptr) {
+    // TODO: Compile arity constructor
     LOG(FATAL) << "Dynamic arities not implemented yet";
+  } else {
+    arity_result->SetValue(Operand(arity));
   }
 
-  shared_ptr<ExpressionResult> arity_result = result_;
-
+  result_->SetupValuePlaceholder("RecordPlaceHolder");
   segment_->push_back(
       Bytecode(Bytecode::NEW_RECORD,
-               result->value(),
+               result_->value(),
                arity_result->value(),
-               label_result->value()));
+               record_label_result->value()));
+
 
   // Assign features
-  auto_feature = 1;
+  uint64 auto_feature = 1;
   for (auto feature : node->features->nodes) {
-    shared_ptr<ExpressionResult> label_result(
-        new ExpressionResult(environment_));
-    shared_ptr<ExpressionResult> value_result(
-        new ExpressionResult(environment_));
+    shared_ptr<ExpressionResult> label_result;
+    shared_ptr<ExpressionResult> value_result;
 
     if (feature->type == OzLexemType::RECORD_DEF_FEATURE) {
       shared_ptr<OzNodeBinaryOp> def =
           std::dynamic_pointer_cast<OzNodeBinaryOp>(feature);
-      result_ = label_result;
-      def->lop->AcceptVisitor(this);
-
-      result_ = value_result;
-      def->rop->AcceptVisitor(this);
+      label_result = CompileExpression(def->lop);
+      value_result = CompileExpression(def->rop);
 
     } else {
+      // Automatically compute feature label:
+      label_result.reset(new ExpressionResult(environment_));
       label_result->SetValue(Operand(SmallInteger(auto_feature).Encode()));
       auto_feature += 1;
 
-      result_ = value_result;
-      feature->AcceptVisitor(this);
+      value_result = CompileExpression(feature);
     }
 
     segment_->push_back(
         Bytecode(Bytecode::UNIFY_RECORD_FIELD,
-                 result->value(),          // record
+                 result_->value(),         // record
                  label_result->value(),    // feature label
                  value_result->value()));  // feature value
   }
-
-  // Return the record:
-  result_ = result;
 }
 
 
 // virtual
 void CompileVisitor::Visit(OzNodeBinaryOp* node) {
-  shared_ptr<ExpressionResult> result = result_;
-
-  result_.reset(new ExpressionResult(environment_));
-  node->lop->AcceptVisitor(this);
-  shared_ptr<ExpressionResult> lop_result = result_;
-
-  result_.reset(new ExpressionResult(environment_));
-  node->rop->AcceptVisitor(this);
-  shared_ptr<ExpressionResult> rop_result = result_;
-
-  result_ = result;
+  shared_ptr<ExpressionResult> lop = CompileExpression(node->lop);
+  shared_ptr<ExpressionResult> rop = CompileExpression(node->rop);
 
   switch (node->operation.type) {
     case OzLexemType::LIST_CONS: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("ListConstructorResult");
       segment_->push_back(
           Bytecode(Bytecode::NEW_LIST,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     case OzLexemType::EQUAL: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("EqualityTestResult");
       segment_->push_back(
           Bytecode(Bytecode::TEST_EQUALITY,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     case OzLexemType::LESS_THAN: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("LessThanTestResult");
       segment_->push_back(
           Bytecode(Bytecode::TEST_LESS_THAN,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     case OzLexemType::LESS_OR_EQUAL: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("LessOrEqualTestResult");
       segment_->push_back(
           Bytecode(Bytecode::TEST_LESS_OR_EQUAL,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     case OzLexemType::GREATER_THAN: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("GreaterThanTestResult");
+      // Switch left and right operands on purpose:
       segment_->push_back(
           Bytecode(Bytecode::TEST_LESS_THAN,
                    result_->value(),
-                   rop_result->value(),
-                   lop_result->value()));
+                   rop->value(),
+                   lop->value()));
       break;
     }
     case OzLexemType::GREATER_OR_EQUAL: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("GreaterOrEqualTestResult");
+      // Switch left and right operands on purpose:
       segment_->push_back(
           Bytecode(Bytecode::TEST_LESS_OR_EQUAL,
                    result_->value(),
-                   rop_result->value(),
-                   lop_result->value()));
+                   rop->value(),
+                   lop->value()));
       break;
     }
     case OzLexemType::CELL_ASSIGN: {
       // TODO: ASSIGN_CELL as an expression (atomic read+write)
       segment_->push_back(
           Bytecode(Bytecode::ASSIGN_CELL,
-                   lop_result->value(),  // cell
-                   rop_result->value()));  // value
+                   lop->value(),  // cell
+                   rop->value()));  // value
       break;
     }
     case OzLexemType::RECORD_ACCESS: {
@@ -414,30 +385,28 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
       segment_->push_back(
           Bytecode(Bytecode::ACCESS_RECORD,
                    result_->value(),
-                   lop_result->value(),  // record
-                   rop_result->value()));  // feature
+                   lop->value(),    // record
+                   rop->value()));  // feature
       break;
     }
     case OzLexemType::NUMERIC_MINUS: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("NumericMinusResult");
       segment_->push_back(
           Bytecode(Bytecode::NUMBER_INT_SUBTRACT,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     case OzLexemType::NUMERIC_DIV: {
-      CHECK(!result_->statement())
-          << "Invalid use of binary expression as statement.";
+      CHECK(IsExpression()) << "Invalid use of binary expression as statement.";
       result_->SetupValuePlaceholder("NumericDivResult");
       segment_->push_back(
           Bytecode(Bytecode::NUMBER_INT_DIVIDE,
                    result_->value(),
-                   lop_result->value(),
-                   rop_result->value()));
+                   lop->value(),
+                   rop->value()));
       break;
     }
     default:
@@ -447,13 +416,13 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeUnaryOp* node) {
-  CHECK(!result_->statement())
-      << "Invalid use of unary expression as statement";
+  CHECK(IsExpression())
+      << "Invalid use of unary expression as statement" << *node;
 
   switch (node->operation.type) {
     case OzLexemType::NUMERIC_NEG: {
       result_->SetupValuePlaceholder("NumericNegResult");
-      node->operand->AcceptVisitor(this);
+      Compile(node->operand, result_);
       segment_->push_back(
           Bytecode(
               Bytecode::NUMBER_INT_INVERSE,
@@ -470,7 +439,7 @@ void CompileVisitor::Visit(OzNodeUnaryOp* node) {
       shared_ptr<OzNodeVar> var =
           std::dynamic_pointer_cast<OzNodeVar>(node->operand);
       var->no_declare = true;
-      var->AcceptVisitor(this);
+      Compile(var, result_);
       break;
     }
     default:
@@ -506,73 +475,55 @@ void CompileVisitor::Visit(OzNodeNaryOp* node) {
 }
 
 void CompileVisitor::CompileUnify(OzNodeNaryOp* node) {
-  // The result for the entire unification expression/statement:
-  shared_ptr<ExpressionResult> result = result_;
-
-  const bool is_statement = result->statement();
-  if (is_statement) {
-    // Create an expression result place-holder for the first expression.
-    result_.reset(new ExpressionResult(environment_));
-  } else {
-    // First expression is the result for the entire unification expression.
-  }
-
   // Compute and save the first operand.
   // Other operands will be unified against this one.
   // The first operand is the one being returned, if this is an expression.
   const bool saved_declaring = declaring_;
   declaring_ = true;
-  node->operands[0]->AcceptVisitor(this);
-  shared_ptr<ExpressionResult> first = result_;
+  shared_ptr<ExpressionResult> first =
+      IsExpression()
+      ? CompileExpression(node->operands[0], result_)
+      : CompileExpression(node->operands[0]);
   declaring_ = saved_declaring;
 
   const uint64 size = node->operands.size();
   for (uint64 i = 1; i < size; ++i) {
-    // Compute the next operand:
-    result_.reset(new ExpressionResult(environment_));
-    node->operands[i]->AcceptVisitor(this);
-
+    shared_ptr<ExpressionResult> result = CompileExpression(node->operands[i]);
     segment_->push_back(
         Bytecode(Bytecode::UNIFY,
                  first->value(),
-                 result_->value()));
+                 result->value()));
   }
-
-  // Returns the result for this unify expression, if not a statement
-  result_ = is_statement ? result : first;
 }
 
 void CompileVisitor::CompileTupleCons(OzNodeNaryOp* node) {
-  CHECK(!result_->statement()) << "Invalid use of tuple as statement.";
-  result_->SetupValuePlaceholder("TupleResult");
-  shared_ptr<ExpressionResult> result = result_;
+  CHECK(IsExpression()) << "Invalid use of tuple as statement.";
 
-  // TODO: merge with Visit(OzNodeRecord*) ?
   Operand size_op(SmallInteger(node->operands.size()).Encode());
   Operand label_op(KAtomTuple());
-  Operand tuple_op = result_->into();
+  Operand tuple_op = result_->SetupValuePlaceholder("TupleResult");
   segment_->push_back(
-      Bytecode(Bytecode::NEW_TUPLE, tuple_op, size_op, label_op));
+      Bytecode(Bytecode::NEW_TUPLE,
+               tuple_op,    // into
+               size_op,     // tuple size
+               label_op));  // tuple label
 
   for (uint64 ival = 0; ival < node->operands.size(); ++ival) {
     Operand feat_op(SmallInteger(ival + 1).Encode());
 
     // Compute the value of this tuple feature:
-    ScopedTemp feat_temp(environment_, "TupleFeatureTemp");
-    result_.reset(new ExpressionResult(feat_temp.symbol()));
-    node->operands[ival]->AcceptVisitor(this);
-
+    shared_ptr<ExpressionResult> feat = CompileExpression(node->operands[ival]);
     segment_->push_back(
         Bytecode(Bytecode::UNIFY_RECORD_FIELD,
                  tuple_op,
                  feat_op,
-                 result_->value()));
+                 feat->value()));
   }
-
-  result_ = result;
 }
 
 void CompileVisitor::CompileMulOrAdd(OzNodeNaryOp* node) {
+  CHECK(IsExpression()) << "Invalid use of numeric operation as statement.";
+
   Bytecode::OpcodeType opcode;
   switch (node->operation.type) {
     case OzLexemType::NUMERIC_MUL: {
@@ -586,25 +537,21 @@ void CompileVisitor::CompileMulOrAdd(OzNodeNaryOp* node) {
     default: LOG(FATAL) << "Unsupported operation: " << node->operation.type;
   }
 
-  CHECK(!result_->statement())
-      << "Invalid use of numeric operation as statement.";
+  // Evaluate the first left operand in-place:
   result_->SetupValuePlaceholder("NumericResult");
-  shared_ptr<ExpressionResult> result = result_;
-  node->operands[0]->AcceptVisitor(this);
+  CompileExpression(node->operands[0], result_);
 
   for (int iop = 1; iop < node->operands.size(); ++iop) {
-    result_.reset(new ExpressionResult(environment_));  // = rop
-    node->operands[iop]->AcceptVisitor(this);
+    shared_ptr<ExpressionResult> rop_result =
+        CompileExpression(node->operands[iop]);
 
     segment_->push_back(
         Bytecode(opcode,
-                 result->into(),      // in
-                 result->value(),     // number1 (left operand)
-                 result_->value()));  // number2 (right operand)
-    result->SetValue(result->into());
+                 result_->into(),        // in
+                 result_->value(),       // number1 (left operand)
+                 rop_result->value()));  // number2 (right operand)
+    result_->SetValue(result_->into());
   }
-
-  result_ = result;
 }
 
 // virtual
@@ -614,14 +561,11 @@ void CompileVisitor::Visit(OzNodeFunctor* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeLocal* node) {
-  shared_ptr<ExpressionResult> result = result_;
-
   unique_ptr<Environment::NestedLocalAllocator> local(
       environment_->NewNestedLocalAllocator());
 
   if (node->defs != nullptr) {
-    result_.reset(new ExpressionResult);  // statement
-    node->defs->AcceptVisitor(this);
+    CompileStatement(node->defs);
   }
 
   // Lock the local allocator:
@@ -629,9 +573,8 @@ void CompileVisitor::Visit(OzNodeLocal* node) {
   //  - no new symbol may be defined in this scope.
   local->Lock();
 
-  result_ = result;
   if (node->body != nullptr) {
-    node->body->AcceptVisitor(this);
+    Compile(node->body, result_);  // handle both statement and expression
   }
 
   // Remove the local symbols:
@@ -642,12 +585,11 @@ void CompileVisitor::Visit(OzNodeLocal* node) {
 void CompileVisitor::Visit(OzNodeCond* node) {
   Value saved_cond_next_branch_ip = cond_next_branch_ip_;
   Value saved_cond_end_ip = cond_end_ip_;
-  shared_ptr<ExpressionResult> result = result_;
 
   cond_next_branch_ip_ = Variable::New(store_);
   cond_end_ip_ = Variable::New(store_);
 
-  const bool is_statement = result_->statement();
+  const bool is_statement = IsStatement();
   if (!is_statement) {
     // Forces the result to be stored in this place-holder:
     result_->SetupValuePlaceholder("ConditionalResultValue");
@@ -657,19 +599,20 @@ void CompileVisitor::Visit(OzNodeCond* node) {
     Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
     cond_next_branch_ip_ = Variable::New(store_);
 
-    branch->AcceptVisitor(this);  // enforces result in place-holder
+    // enforces result in place-holder
+    Compile(branch, result_);
   }
 
   if (node->else_branch != nullptr) {
     Unify(cond_next_branch_ip_, Value::Integer(segment_->size()));
     cond_next_branch_ip_ = Variable::New(store_);
 
-    node->else_branch->AcceptVisitor(this);
+    Compile(node->else_branch, result_);
 
-    if (!is_statement && (result_->value() != result_->into())) {
+    if (IsExpression() && (result_->value() != result_->into())) {
       // enforces result in place-holder:
       segment_->push_back(
-          Bytecode(Bytecode::UNIFY,
+          Bytecode(Bytecode::UNIFY,  // UNIFY or LOAD?
                    result_->value(),
                    result_->into()));
     }
@@ -680,7 +623,6 @@ void CompileVisitor::Visit(OzNodeCond* node) {
 
   cond_next_branch_ip_ = saved_cond_next_branch_ip;
   cond_end_ip_ = saved_cond_end_ip;
-  result_ = result;
   if (!is_statement) {
     result_->SetValue(result_->into());  // acknowledge result in place-holder
   }
@@ -688,30 +630,27 @@ void CompileVisitor::Visit(OzNodeCond* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeCondBranch* node) {
-  shared_ptr<ExpressionResult> result = result_;
-
   // Evaluate the boolean condition for the branch:
-  result_.reset(new ExpressionResult(environment_));
-  node->condition->AcceptVisitor(this);
+  shared_ptr<ExpressionResult> cond_result = CompileExpression(node->condition);
 
   // Jump to next branch if condition evaluates to false:
   segment_->push_back(
       Bytecode(Bytecode::BRANCH_UNLESS,
-               result_->value(),
+               cond_result->value(),
                Operand(cond_next_branch_ip_)));
 
-  // Otherwise, execute branch:
-  result_ = result;
-  node->body->AcceptVisitor(this);
+  // If condition evaluates to true, execute the branch body:
+  Compile(node->body, result_);
 
-  if (!result_->statement() && (result_->value() != result_->into())) {
+  if (IsExpression() && (result_->value() != result_->into())) {
     // enforces result in place-holder:
     segment_->push_back(
-        Bytecode(Bytecode::UNIFY,
+        Bytecode(Bytecode::UNIFY,  // UNIFY or LOAD?
                  result_->value(),
                  result_->into()));
   }
 
+  // After the branch body, jump right after the end of the conditional:
   segment_->push_back(
       Bytecode(Bytecode::BRANCH,
                Operand(cond_end_ip_)));
@@ -719,45 +658,50 @@ void CompileVisitor::Visit(OzNodeCondBranch* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodePatternMatch* node) {
-  shared_ptr<ExpressionResult> result = result_;
+  shared_ptr<ExpressionResult> val_result = CompileExpression(node->value);
 
-  shared_ptr<ExpressionResult> matched_val_result(
-      new ExpressionResult(environment_));
-
-  result_ = matched_val_result;
-  node->value->AcceptVisitor(this);
-  result_ = result;
-
-  Operand matched_val = matched_val_result->value();
+  // !!!!!
+  // FIXME: pattern matching should not affect/mutate the value.
+  // !!!!!
 
   for (auto branch : node->branches) {
+    unique_ptr<Environment::NestedLocalAllocator> local(
+        environment_->NewNestedLocalAllocator());
+
     shared_ptr<OzNodePatternBranch> pbranch =
         std::dynamic_pointer_cast<OzNodePatternBranch>(branch);
 
-    // TODO: Evaluate pattern
-    // pbranch->pattern->AcceptVisitor(this);
-    LOG(FATAL) << "not implemented";
+    // Create pattern:
+    shared_ptr<ExpressionResult> pattern_result =
+        CompileExpression(pbranch->pattern);
+
+    ScopedTemp success_temp(environment_, "try_unify_success");
+
+    // Attempt to match pattern with value:
+    segment_->push_back(
+        Bytecode(Bytecode::TRY_UNIFY,
+                 result_->value(),
+                 val_result->value(),
+                 success_temp.GetOperand()));
 
     // Jump to next branch if condition evaluates to false:
     segment_->push_back(
         Bytecode(Bytecode::BRANCH_UNLESS,
-                 result_->value(),  // FIXME
+                 success_temp.GetOperand(),
                  Operand(cond_next_branch_ip_)));
 
     if (pbranch->condition != nullptr) {
-      result_.reset(new ExpressionResult(environment_));
-      pbranch->condition->AcceptVisitor(this);
+      shared_ptr<ExpressionResult> cond_result =
+          CompileExpression(pbranch->condition);
 
       // Jump to next branch if condition evaluates to false:
       segment_->push_back(
           Bytecode(Bytecode::BRANCH_UNLESS,
-                   result_->value(),
+                   cond_result->value(),
                    Operand(cond_next_branch_ip_)));
-
-      result_ = result;
     }
 
-    pbranch->body->AcceptVisitor(this);
+    Compile(pbranch->body, result_);
 
     segment_->push_back(
         Bytecode(Bytecode::BRANCH,
@@ -767,7 +711,7 @@ void CompileVisitor::Visit(OzNodePatternMatch* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodePatternBranch* node) {
-  LOG(FATAL) << "Pattern branching not implemented";
+  LOG(FATAL) << "Internal error";
 }
 
 // virtual
@@ -797,13 +741,17 @@ void CompileVisitor::Visit(OzNodeTry* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeRaise* node) {
-  shared_ptr<ExpressionResult> result = result_;
-  result_.reset(new ExpressionResult(environment_));
-  node->exn->AcceptVisitor(this);
+  // If this is an expression, this should probably default the value to an
+  // undetermined variable.
+  if (IsExpression()) {
+    result_->SetupValuePlaceholder("RaiseUndeterminedResult");
+    segment_->push_back(
+        Bytecode(Bytecode::NEW_VARIABLE, result_->into()));
+  }
+
+  shared_ptr<ExpressionResult> exn = CompileExpression(node->exn);
   segment_->push_back(
       Bytecode(Bytecode::EXN_RAISE, result_->value()));
-  result_ = result;
-  // No need to set the result value here.
 }
 
 // virtual
@@ -814,17 +762,15 @@ void CompileVisitor::Visit(OzNodeClass* node) {
 // virtual
 void CompileVisitor::Visit(OzNodeSequence* node) {
   CHECK_GE(node->nodes.size(), 1);
-  shared_ptr<ExpressionResult> result = result_;
 
   const uint64 ilast = (node->nodes.size() - 1);
   for (uint64 i = 0; i <= ilast; ++i) {
     const bool is_last = (i == ilast);
     if (is_last) {
-      result_ = result;
+      Compile(node->nodes[i], result_);
     } else {
-      result_.reset(new ExpressionResult());  // statement
+      CompileStatement(node->nodes[i]);
     }
-    node->nodes[i]->AcceptVisitor(this);
   }
 }
 
@@ -833,15 +779,8 @@ void CompileVisitor::Visit(OzNodeCall* node) {
   // Expression {Proc Param1 ... ParamK} implies an implicit return parameter.
   // Expression {Proc Param1 ... $ ... ParamK} has an explicit return parameter.
 
-  shared_ptr<ExpressionResult> result = result_;
-  const bool is_statement = result->statement();
-
   const bool saved_declaring = declaring_;
   declaring_ = false;
-
-  if (!is_statement) {
-    result->SetupValuePlaceholder("CallReturnPlaceholder");
-  }
 
   // Determine if there is a return parameter '$':
   bool has_expr_val = false;
@@ -853,13 +792,20 @@ void CompileVisitor::Visit(OzNodeCall* node) {
   }
 
   // Return parameter requires this to be an expression:
-  CHECK(!(has_expr_val && is_statement))
+  CHECK(!(has_expr_val && IsStatement()))
       << "Invalid statement call with '$':\n" << *node;
+
+  if (IsExpression()) {
+    // Setup return value place-holder:
+    segment_->push_back(
+        Bytecode(Bytecode::NEW_VARIABLE,
+                 result_->SetupValuePlaceholder("CallReturnPlaceholder")));
+  }
 
   // Determine the actual number of parameters for the call,
   // including the implicit return value, if needed:
   uint64 nparams = (node->nodes.size() - 1);
-  if (!is_statement && !has_expr_val) nparams += 1;
+  if (IsExpression() && !has_expr_val) nparams += 1;
 
   ScopedTemp params_temp(environment_);
   Operand params_op;  // Invalid by default.
@@ -871,55 +817,52 @@ void CompileVisitor::Visit(OzNodeCall* node) {
     segment_->push_back(
         Bytecode(Bytecode::NEW_ARRAY,
                  params_op,
-                 Operand(Value::Integer(nparams)),
+                 Operand(New::Integer(store_, nparams)),
                  Operand(KAtomEmpty())));  // dummy value
 
     // Compute each parameter and set its value in the array:
     for (uint64 iparam = 1; iparam < node->nodes.size(); ++iparam) {
-      shared_ptr<AbstractOzNode> param = node->nodes[iparam];
-      Operand param_op;
-      result_.reset(new ExpressionResult(environment_));
+      shared_ptr<AbstractOzNode> param_node = node->nodes[iparam];
+      shared_ptr<ExpressionResult> param_result(
+          new ExpressionResult(environment_));
 
-      if (param->type == OzLexemType::EXPR_VAL) {  // Explicit output parameter
-        param_op = result->value();
-        segment_->push_back(Bytecode(Bytecode::NEW_VARIABLE, param_op));
+      if (param_node->type == OzLexemType::EXPR_VAL) {
+        // Explicit output parameter
+        param_result->SetValue(result_->into());
 
-      } else {  // Normal parameter
-        param->AcceptVisitor(this);
-        param_op = result_->value();
+      } else {
+        // Expression parameter
+        CompileExpression(param_node, param_result);
       }
 
-      CHECK(!param_op.invalid());
       segment_->push_back(
           Bytecode(Bytecode::ASSIGN_ARRAY,
                    params_op,
-                   Operand(Value::Integer(iparam - 1)),
-                   param_op));
+                   Operand(New::Integer(store_, iparam - 1)),
+                   param_result->value()));
     }
 
-    // Initialize the implicit return-value parameter, if needed:
-    if (!is_statement && !has_expr_val) {
-      Operand param_op = result->value();
-      segment_->push_back(Bytecode(Bytecode::NEW_VARIABLE, param_op));
+    if (IsExpression() && !has_expr_val) {
+      // Implicit output parameter
       segment_->push_back(
           Bytecode(Bytecode::ASSIGN_ARRAY,
                    params_op,
-                   Operand(Value::Integer(nparams - 1)),
-                   param_op));
+                   Operand(New::Integer(store_, nparams - 1)),
+                   result_->into()));
     }
 
   } else {
-    // No parameter
+    // No parameter for the call
   }
 
   // Evaluate the expression that determines which procedure to invoke:
-  shared_ptr<AbstractOzNode> proc = node->nodes.front();
-  result_.reset(new ExpressionResult(environment_));
-  proc->AcceptVisitor(this);
-  Operand proc_op = result_->value();
+  shared_ptr<ExpressionResult> proc_result =
+      CompileExpression(node->nodes.front());
+  Operand proc_op = proc_result->value();
 
   // This is a little bit inaccurate, but good enough to start with:
-  const bool native = (proc_op.type == Operand::IMMEDIATE)
+  const bool native =
+      (proc_op.type == Operand::IMMEDIATE)
       && (proc_op.value.IsA<Atom>());
 
   segment_->push_back(
@@ -927,41 +870,32 @@ void CompileVisitor::Visit(OzNodeCall* node) {
                proc_op,
                params_op));
 
-  // Result for this call expression/statement:
-  result_ = result;
+  // Restore state:
   declaring_ = saved_declaring;
 }
 
 // virtual
 void CompileVisitor::Visit(OzNodeList* node) {
-  CHECK(!result_->statement())
-      << "Invalid use of list as statement.";
-  shared_ptr<ExpressionResult> result = result_;
+  CHECK(IsExpression()) << "Invalid use of list as statement.";
+  result_->SetupValuePlaceholder("ListConstructor");
 
   vector<shared_ptr<ExpressionResult> > elements;
   for (auto element : node->nodes) {
-    result_.reset(new ExpressionResult(environment_));
-    element->AcceptVisitor(this);
-    elements.push_back(result_);
+    elements.push_back(CompileExpression(element));
   }
 
-  ScopedTemp temp(environment_, "ListBuilder");
   segment_->push_back(
       Bytecode(Bytecode::LOAD,
-               temp.GetOperand(),      // dest
+               result_->into(),        // dest
                Operand(KAtomNil())));  // src
 
   for (int64 ielt = elements.size() - 1; ielt >= 0; --ielt) {
     segment_->push_back(
         Bytecode(Bytecode::NEW_LIST,
-                 temp.GetOperand(),        // into
+                 result_->into(),          // into
                  elements[ielt]->value(),  // head
-                 temp.GetOperand()));      // tail
+                 result_->value()));       // tail
   }
-
-  result_ = result;
-  result_->SetValue(temp.GetOperand());
 }
-
 
 }}  // namespace combinators::oz
