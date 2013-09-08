@@ -150,12 +150,28 @@ TEST_F(CompileVisitorTest, TuplePattern) {
   );
 }
 
-// TEST_F(CompileVisitorTest, ProcRecursive) {
-//   Compile(
-//       "fun {Factorial N}\n"
-//       "  if N == 0 then 1 else N * {Factorial (N - 1)} end\n"
-//       "end\n"
-//   );
-// }
+TEST_F(CompileVisitorTest, NumberAdd) {
+  Compile(
+      "fun {Add X Y}\n"
+      "  X + Y\n"
+      "end\n"
+  );
+}
+
+TEST_F(CompileVisitorTest, NumberAddPlenty) {
+  Compile(
+      "fun {Add X Y Z T}\n"
+      "  X + Y + 1 + Z + T\n"
+      "end\n"
+  );
+}
+
+TEST_F(CompileVisitorTest, Factorial) {
+  Compile(
+      "fun {Factorial N}\n"
+      "  if N == 0 then 1 else N * {Factorial (N - 1)} end\n"
+      "end\n"
+  );
+}
 
 }}  // namespace combinators::oz

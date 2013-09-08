@@ -508,27 +508,56 @@ void CompileVisitor::CompileTupleCons(OzNodeNaryOp* node) {
       Bytecode(Bytecode::NEW_TUPLE, tuple_op, size_op, label_op));
 
   for (uint64 ival = 0; ival < node->operands.size(); ++ival) {
+    Operand feat_op(SmallInteger(ival + 1).Encode());
+
+    // Compute the value of this tuple feature:
     ScopedTemp feat_temp(environment_, "TupleFeatureTemp");
-    segment_->push_back(
-        Bytecode(Bytecode::ACCESS_RECORD,
-                 feat_temp.GetOperand(),
-                 tuple_op,
-                 Operand(SmallInteger(ival + 1).Encode())));
     result_.reset(new ExpressionResult(feat_temp.symbol()));
     node->operands[ival]->AcceptVisitor(this);
-    if (result_->value() != feat_temp.GetOperand()) {
-      segment_->push_back(
-          Bytecode(Bytecode::UNIFY,
-                   feat_temp.GetOperand(),
-                   result_->value()));
-    }
+
+    segment_->push_back(
+        Bytecode(Bytecode::UNIFY_RECORD_FIELD,
+                 tuple_op,
+                 feat_op,
+                 result_->value()));
   }
 
   result_ = result;
 }
 
 void CompileVisitor::CompileMulOrAdd(OzNodeNaryOp* node) {
-  LOG(FATAL) << "Multiply/add operator not implemented yet";
+  Bytecode::OpcodeType opcode;
+  switch (node->operation.type) {
+    case OzLexemType::NUMERIC_MUL: {
+      opcode = Bytecode::NUMBER_INT_MULTIPLY;
+      break;
+    }
+    case OzLexemType::NUMERIC_ADD: {
+      opcode = Bytecode::NUMBER_INT_ADD;
+      break;
+    }
+    default: LOG(FATAL) << "Unsupported operation: " << node->operation.type;
+  }
+
+  CHECK(!result_->statement())
+      << "Invalid use of numeric operation as statement.";
+  result_->SetupValuePlaceholder("NumericResult");
+  shared_ptr<ExpressionResult> result = result_;
+  node->operands[0]->AcceptVisitor(this);
+
+  for (int iop = 1; iop < node->operands.size(); ++iop) {
+    result_.reset(new ExpressionResult(environment_));  // = rop
+    node->operands[iop]->AcceptVisitor(this);
+
+    segment_->push_back(
+        Bytecode(opcode,
+                 result->into(),      // in
+                 result->value(),     // number1 (left operand)
+                 result_->value()));  // number2 (right operand)
+    result->SetValue(result->into());
+  }
+
+  result_ = result;
 }
 
 // virtual

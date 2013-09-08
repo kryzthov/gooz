@@ -92,8 +92,15 @@ Thread::ThreadState Thread::Run(
         if (WaitOn(feature)) goto suspended;
         if (!(feature.caps() & Value::CAP_LITERAL)) goto bad_operand;
 
-        store::Unify(record.RecordGet(feature), OpGet(inst.operand3),
-                     new_runnable);
+        const bool success =
+            store::Unify(
+                record.RecordGet(feature),
+                OpGet(inst.operand3),
+                new_runnable);
+        if (!success) {
+          // TODO: throw an exception instead
+          goto bad_operand;
+        }
         break;
       }
 
