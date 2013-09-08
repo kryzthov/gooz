@@ -188,7 +188,9 @@ void CompileVisitor::Visit(OzNodeVar* node) {
     LOG(FATAL) << "Invalid statement: " << node;
   }
 
-  if (declaring_ && !environment_->ExistsLocally(node->var_name)) {
+  if (declaring_
+      && !node->no_declare
+      && !environment_->ExistsLocally(node->var_name)) {
     const Symbol& symbol = environment_->AddLocal(node->var_name);
     VLOG(1)
         << "New local variable: " << node->var_name
@@ -436,22 +438,36 @@ void CompileVisitor::Visit(OzNodeBinaryOp* node) {
 
 // virtual
 void CompileVisitor::Visit(OzNodeUnaryOp* node) {
-  // store::Value value = Eval(node->operand.get());
-  // switch (node->type) {
-  //   case OzLexemType::NUMERIC_NEG: {
-  //     switch (value.type()) {
-  //       case store::Value::SMALL_INTEGER: {
-  //         value_ = store::New::Integer(store_, -store::IntValue(value));
-  //         break;
-  //       }
-  //       default:
-  //         LOG(FATAL) << "Unsupported operand: " << value.ToString();
-  //     }
-  //     break;
-  //   }
-  //   default:
-  //     LOG(FATAL) << "Unary operator not supported: " << node->type;
-  // }
+  CHECK(!result_->statement())
+      << "Invalid use of unary expression as statement";
+
+  switch (node->operation.type) {
+    case OzLexemType::NUMERIC_NEG: {
+      result_->SetupValuePlaceholder("NumericNegResult");
+      node->operand->AcceptVisitor(this);
+      segment_->push_back(
+          Bytecode(
+              Bytecode::NUMBER_INT_INVERSE,
+              result_->into(),     // in
+              result_->value()));  // number
+      break;
+    }
+    case OzLexemType::VAR_NODEF: {
+      if (node->operand->type != OzLexemType::VARIABLE) {
+        LOG(FATAL)
+            << "Non-declaring operator can only be applied to variables, got: "
+            << *node;
+      }
+      shared_ptr<OzNodeVar> var =
+          std::dynamic_pointer_cast<OzNodeVar>(node->operand);
+      var->no_declare = true;
+      var->AcceptVisitor(this);
+      break;
+    }
+    default:
+      LOG(FATAL) << "Invalid or unsupported unary operator: "
+                 << node->operation.type;
+  }
 }
 
 // virtual
