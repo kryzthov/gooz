@@ -141,8 +141,7 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   store::Value Compile(AbstractOzNode* node) {
     LOG(INFO) << "Compiling:\n" << *node;
     node->AcceptVisitor(this);
-    // return ???;
-    return nullptr;
+    return top_level_;
   }
 
   virtual void Visit(OzNodeError* node) {
@@ -174,6 +173,8 @@ class CompileVisitor : public AbstractOzNodeVisitor {
   virtual void Visit(OzNodeUnaryOp* node);
   virtual void Visit(OzNodeVar* node);
 
+  // Returns the compiled top-level procedure.
+  Closure* top_level() const { return CHECK_NOTNULL(top_level_); }
 
   // ---------------------------------------------------------------------------
 
@@ -235,6 +236,9 @@ class CompileVisitor : public AbstractOzNodeVisitor {
 
   // Future for the instruction pointer at the end of a conditional.
   Value cond_end_ip_;
+
+  // Compiled top-level closure.
+  Closure* top_level_;
 
   DISALLOW_COPY_AND_ASSIGN(CompileVisitor);
 };

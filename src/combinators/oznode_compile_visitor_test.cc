@@ -7,6 +7,30 @@
 
 namespace combinators { namespace oz {
 
+// -----------------------------------------------------------------------------
+
+namespace {
+
+// A mock 'print' native procedure that records everything.
+class TestPrint: public NativeInterface {
+ public:
+  virtual void Execute(Array* parameters) {
+    for (uint64 i = 0; i < parameters->size(); ++i) {
+      Value value = parameters->values()[i];
+      output_.append(value.ToString());
+    }
+  }
+
+  const string& output() const { return output_; }
+
+ private:
+  string output_;
+};
+
+}  // namespace
+
+// -----------------------------------------------------------------------------
+
 const uint64 kStoreSize = 1024 * 1024;
 
 class CompileVisitorTest : public testing::Test {
@@ -14,6 +38,8 @@ class CompileVisitorTest : public testing::Test {
   CompileVisitorTest()
       : store_(kStoreSize),
         visitor_(&store_) {
+    engine_.RegisterNative("print", &test_print_);
+    engine_.RegisterNative("println", &test_print_);
   }
 
   store::Value Compile(const string& source) {
@@ -28,7 +54,11 @@ class CompileVisitorTest : public testing::Test {
 
   store::StaticStore store_;
   CompileVisitor visitor_;
+  Engine engine_;
+  TestPrint test_print_;
 };
+
+// -----------------------------------------------------------------------------
 
 TEST_F(CompileVisitorTest, ProcedureCall1) {
   Compile("proc {P X Y} {X X Y} end");
@@ -164,6 +194,17 @@ TEST_F(CompileVisitorTest, NumberAddPlenty) {
       "  X + Y + 1 + Z + T\n"
       "end\n"
   );
+}
+
+TEST_F(CompileVisitorTest, TopLevelProc) {
+  Value top_level = Compile(
+      "X = 1\n"
+      "Y = X + 1\n"
+      "{println Y}\n"
+  );
+  Engine engine;
+  New::Thread(&store_, &engine, top_level.Deref(), Array::EmptyArray, &store_);
+  engine.Run();
 }
 
 TEST_F(CompileVisitorTest, Factorial) {

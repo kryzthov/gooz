@@ -32,6 +32,7 @@ class Engine {
   void Run();
 
   // Registers a native procedure.
+  // Override any pre-existing native with the specified name.
   void RegisterNative(string name, NativeInterface* native);
 
  private:

@@ -478,6 +478,13 @@ class New {
   }
 
   static inline
+  Value Thread(Store* store, Engine* engine, Value closure_val,
+               store::Array* parameters, Store* thread_store) {
+    store::Closure* closure = closure_val.as<store::Closure>();
+    return store::Thread::New(store, engine, closure, parameters, thread_store);
+  }
+
+  static inline
   Value Thread(Store* store, Engine* engine, store::Closure* closure,
                store::Array* parameters, Store* thread_store) {
     return store::Thread::New(store, engine, closure, parameters, thread_store);

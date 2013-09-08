@@ -42,6 +42,15 @@ void CompileVisitor::Visit(OzNodeGeneric* node) {
   for (auto def : node->nodes) {
     def->AcceptVisitor(this);
   }
+
+  CHECK_EQ(0, environment_->nparams());
+  CHECK_EQ(0, environment_->nclosures());
+
+  top_level_ =
+      New::Closure(store_, segment_, 0, environment_->nlocals(), 0)
+      .as<Closure>();
+
+  LOG(INFO) << "Top-level procedure:\n" << top_level_->ToString();
 }
 
 // virtual
@@ -299,8 +308,8 @@ exit_loop:
 
     segment_->push_back(
         Bytecode(Bytecode::UNIFY_RECORD_FIELD,
-                 result->value(),  // record
-                 label_result->value(),  // feature label
+                 result->value(),          // record
+                 label_result->value(),    // feature label
                  value_result->value()));  // feature value
   }
 
@@ -939,15 +948,15 @@ void CompileVisitor::Visit(OzNodeList* node) {
   ScopedTemp temp(environment_, "ListBuilder");
   segment_->push_back(
       Bytecode(Bytecode::LOAD,
-               temp.GetOperand(),  // dest
+               temp.GetOperand(),      // dest
                Operand(KAtomNil())));  // src
 
   for (int64 ielt = elements.size() - 1; ielt >= 0; --ielt) {
     segment_->push_back(
         Bytecode(Bytecode::NEW_LIST,
-                 temp.GetOperand(),  // into
+                 temp.GetOperand(),        // into
                  elements[ielt]->value(),  // head
-                 temp.GetOperand()));  // tail
+                 temp.GetOperand()));      // tail
   }
 
   result_ = result;
