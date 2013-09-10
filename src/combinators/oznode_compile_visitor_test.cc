@@ -208,6 +208,23 @@ TEST_F(CompileVisitorTest, NumberAddPlenty) {
   );
 }
 
+TEST_F(CompileVisitorTest, NestedLocals) {
+  Value top_level = Compile(
+      "local\n"
+      "  local\n"
+      "    Y = 1\n"
+      "  in\n"
+      "    X = Y + 1\n"
+      "  end\n"
+      "in\n"
+      "  {println X}"
+      "end\n"
+  );
+  Engine engine;
+  New::Thread(&store_, &engine, top_level.Deref(), Array::EmptyArray, &store_);
+  engine.Run();
+}
+
 TEST_F(CompileVisitorTest, TopLevelProc) {
   Value top_level = Compile(
       "X = 1\n"
