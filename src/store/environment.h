@@ -28,10 +28,18 @@ class Symbol {
  public:
   enum Type {
     INVALID,
+
+    // Symbol value is stored in a parameter register.
     PARAMETER,
+
+    // Symbol value is stored in a local register.
     LOCAL,
+
+    // Symbol value is stored in a closure register.
     CLOSURE,
-    GLOBAL,  // = Immediate
+
+    // Symbol value is an immediate (global) value.
+    GLOBAL,
   };
 
   // The default constructor creates an invalid symbol.
@@ -133,10 +141,17 @@ class Symbol {
   }
 
  private:
+  // Type of the symbol.
   Type type_;
-  string name_;  // may be empty for unnamed symbols
-  int index_;  // register
-  Value immediate_;  // global
+
+  // Optional name for the symbol.
+  string name_;
+
+  // For symbol stored in registers, this is the register index.
+  int index_;
+
+  // For global, immediate symbols, this is the actual value.
+  Value immediate_;
 };
 
 inline
@@ -146,6 +161,7 @@ string DebugString(const Symbol& symbol) {
 
 // -----------------------------------------------------------------------------
 
+// Interface for a register allocator.
 class RegisterAllocatorInterface {
  public:
   virtual ~RegisterAllocatorInterface() {}
