@@ -1,0 +1,1 @@
+Attempt to build a [Mozart/Oz](http://www.mozart-oz.org) virtual machine and compiler, for fun.
