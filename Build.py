@@ -43,31 +43,31 @@ class SourceNotFoundError(Error):
 
 FLAGS = base.FLAGS
 
-FLAGS.AddBoolean(
+FLAGS.add_boolean(
   'verbose',
   default=False,
   help='Print verbose logging messages during the run.'
 )
 
-FLAGS.AddBoolean(
+FLAGS.add_boolean(
   'verbose_command',
   default=False,
   help='Print each command-line being run.'
 )
 
-FLAGS.AddInteger(
+FLAGS.add_integer(
   'ncpu',
   default=multiprocessing.cpu_count(),
   help='Number of CPU to distribute the work.'
 )
 
-FLAGS.AddBoolean(
+FLAGS.add_boolean(
   'use_distcc',
   default=False,
   help='Whether to use distcc.'
 )
 
-FLAGS.AddString(
+FLAGS.add_string(
   'base_dir',
   default=os.getcwd(),
   help='Base directory to build from.'
@@ -78,7 +78,7 @@ FLAGS.AddString(
 
 # Marker for a parameter's default value.
 # To use when None is a valid parameter's value that does not mean "default".
-Default = object()
+DEFAULT = base.DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -86,21 +86,21 @@ Default = object()
 def FindGCC():
   lpaths = [
     '/usr/bin/g++',
-    '/usr/bin/g++-4.6.1',
-    '/Library/gcc/4.6.2/bin/g++',
   ]
   for path in lpaths:
+    logging.debug("Looking for g++ at %r", path)
     if not os.path.exists(path):
       continue
-    version_line = base.ShellCommandOutput('%s --version' % path).split('\n')[0]
+    version_line = base.shell_command_output('%s --version' % path).split('\n')[0]
     version = version_line.split()[-1]
     nums = version.split('.')
     major = int(nums[0])
     minor = int(nums[1])
     if major < 4:
       continue
-    if minor < 6:
+    if major == 4 and minor < 6:
       continue
+    logging.info("Found g++ at %r", path)
     return path
   raise KeyError('G++ binary')
 
@@ -354,9 +354,9 @@ class Environment(object):
 
     # Google flags
     GFLAGS_CXX_FLAGS = (
-        self.ShellOutput('{PKG_CONFIG} --cflags libgflags')).split()
+        self.ShellOutput('{PKG_CONFIG} --cflags gflags')).split()
     GFLAGS_LINK_OPTIONS = (
-        self.ShellOutput('{PKG_CONFIG} --libs libgflags')).split()
+        self.ShellOutput('{PKG_CONFIG} --libs gflags')).split()
     self.vars.CXX_FLAGS.extend(GFLAGS_CXX_FLAGS)
     self.vars.LINK_OPTIONS.extend(GFLAGS_LINK_OPTIONS)
     # self.vars.CXX_FLAGS += ['-I/R/gflags/current/include/']
@@ -381,10 +381,10 @@ class Environment(object):
     self.vars.LINK_OPTIONS.extend(self.vars.PROTOBUF_LINK_OPTIONS)
 
     # Google unit-tests
-    self.vars.GTEST_CXX_FLAGS = (
-        self.ShellOutput('{GTEST_CONFIG} --cppflags --cxxflags').split())
-    self.vars.GTEST_LINK_OPTIONS = (
-        self.ShellOutput('{GTEST_CONFIG} --ldflags --libs').split())
+    self.vars.GTEST_CXX_FLAGS = []
+    # (self.ShellOutput('{GTEST_CONFIG} --cppflags --cxxflags').split())
+    self.vars.GTEST_LINK_OPTIONS = ["-L/W/github.com/google/googletest/bazel-bin", "-lgtest"]
+    # (self.ShellOutput('{GTEST_CONFIG} --ldflags --libs').split())
     self.vars.CXX_FLAGS.extend(self.vars.GTEST_CXX_FLAGS)
     #LINK_OPTIONS.extend(GTEST_LINK_OPTIONS)  # Added for test binaries only
 
@@ -402,7 +402,7 @@ class Environment(object):
     return self._vars
 
   def ShellOutput(self, command):
-    return base.ShellCommandOutput(command.format(**self.vars._vars))
+    return base.shell_command_output(command.format(**self.vars._vars))
 
   @property
   def base_dir(self):
@@ -573,10 +573,10 @@ class Environment(object):
       program_ppath,
       object_ppaths,
       library_ppaths,
-      link_flags=Default
+      link_flags=DEFAULT
   ):
     """Links a C++ binary."""
-    if link_flags is Default: link_flags = self.vars.LINK_OPTIONS
+    if link_flags is DEFAULT: link_flags = self.vars.LINK_OPTIONS
     program_apath = os.path.join(self._output_dir, program_ppath)
     misc.MakeDirectoriesFor(program_apath)
     object_apaths = [self.GetSourceAbsolutePath(ppath)
@@ -711,13 +711,13 @@ class Build(Action):
 # ------------------------------------------------------------------------------
 
 
-FLAGS.AddString(
+FLAGS.add_string(
   'do',
   default=None,
   help='Optional explicit action to run. One of clean, build.'
 )
 
-def Main(args):
+def main(args):
   logging.info('Base directory: %s', FLAGS.base_dir)
   logging.info('Using %d CPUs', FLAGS.ncpu)
 
@@ -739,4 +739,4 @@ def Main(args):
 
 
 if __name__ == '__main__':
-  base.Run(Main)
+  base.run(main)

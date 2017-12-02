@@ -1,3 +1,3 @@
 [submodule "python-base"]
 	path = python-base
-	url = /home/taton/git/python-base
+	url = https://github.com/kryzthov/python-base
