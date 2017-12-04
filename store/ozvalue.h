@@ -3,9 +3,16 @@
 #ifndef STORE_OZVALUE_H_
 #define STORE_OZVALUE_H_
 
-#include "combinators/oznode_eval_visitor.h"
-#include "combinators/ozparser.h"
+// #include "combinators/oznode_eval_visitor.h"
+// #include "combinators/ozparser.h"
 #include "store/values.h"
+
+// Forward declare combinators::oz::ParseEval()
+namespace combinators {
+namespace oz {
+store::Value ParseEval(const string& code, store::Store* store);
+} // oz
+} // combinators
 
 namespace store {
 

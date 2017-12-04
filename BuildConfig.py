@@ -4,16 +4,16 @@
 
 """Build configuration."""
 
-Library(
-  name='base_lib',
-  sources=[
-    'base/escaping.cc',
-    'base/file-util.cc',
-    'base/real.cc',
-    'base/string_piece.cc',
-    'base/stringer.cc',
-  ],
-)
+# Library(
+#   name='base_lib',
+#   sources=[
+#     'base/escaping.cc',
+#     'base/file-util.cc',
+#     'base/real.cc',
+#     'base/string_piece.cc',
+#     'base/stringer.cc',
+#   ],
+# )
 
 ProtoLibrary(
   name='proto_lib',
@@ -107,22 +107,22 @@ Binary(
 # ------------------------------------------------------------------------------
 #Tests
 
-Library(
-  name='gtest_main_lib',
-  sources=[
-    'base/gtest_main.cc',
-  ],
-)
+# Library(
+#   name='gtest_main_lib',
+#   sources=[
+#     'base/gtest_main.cc',
+#   ],
+# )
 
-Test(
-  name='base/base_test',
-  sources=[
-    'base/real_test.cc',
-  ],
-  dependencies=[
-    'gtest_main_lib',
-  ],
-)
+# Test(
+#   name='base/base_test',
+#   sources=[
+#     'base/real_test.cc',
+#   ],
+#   dependencies=[
+#     'gtest_main_lib',
+#   ],
+# )
 
 Test(
   name='combinators/base_test',
