@@ -27,10 +27,9 @@ cc_library(
 cc_library(
     name="test",
     srcs=["gtest_main.cc"],
-    deps=[":base"],
-    linkopts=[
-        "-L/W/github.com/google/googletest/bazel-bin",
-        "-lgtest",
+    deps=[
+        "//external:gtest",
+        ":base",
     ],
 )
 
