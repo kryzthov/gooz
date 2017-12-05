@@ -20,7 +20,7 @@ class ArityMap : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
   virtual void ExploreValue(ReferenceMap* ref_map);
 
  private: // -------------------------------------------------------------------

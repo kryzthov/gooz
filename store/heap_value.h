@@ -23,10 +23,10 @@ class HeapValue {
   virtual ~HeapValue() {}
 
   // @returns the type of the value.
-  virtual ValueType type() const throw() { return Value::INVALID; }
+  virtual ValueType type() const noexcept { return Value::INVALID; }
 
   template <class C>
-  bool IsA() const throw() { return type() == C::kType; }
+  bool IsA() const noexcept { return type() == C::kType; }
 
   // Dereferences this value.
   // @returns The dereferenced value.

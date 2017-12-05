@@ -71,14 +71,14 @@ class Map : public std::map<Key, Value, Compare, Alloc> {
     return this->find(key) != this->end();
   }
 
-  iterator insert_new(const Key& key, const Value& value) throw() {
+  iterator insert_new(const Key& key, const Value& value) noexcept {
     auto insert_result = this->insert(std::make_pair(key, value));
     CHECK(insert_result.second);
     return insert_result.first;
   }
 
   const Value& operator[](const Key& key) const
-      throw() {
+      noexcept {
     auto it = this->find(key);
     CHECK(it != this->end());
     return it->second;
@@ -103,7 +103,7 @@ class Set : public std::set<Key, Compare, Alloc> {
     return this->find(key) != this->end();
   }
 
-  iterator insert_new(const Key& key) throw() {
+  iterator insert_new(const Key& key) noexcept {
     auto it = this->insert(key);
     CHECK(it.second);
     return it.first;
@@ -126,13 +126,13 @@ class UnorderedMap : public std::unordered_map<Key, Value, Hash, Pred, Alloc> {
     return this->find(key) != this->end();
   }
 
-  iterator insert_new(const Key& key, const Value& value) throw() {
+  iterator insert_new(const Key& key, const Value& value) noexcept {
     auto it = this->insert(std::make_pair(key, value));
     CHECK(it.second);
     return it.first;
   }
 
-  const Value& operator[](const Key& key) const throw() {
+  const Value& operator[](const Key& key) const noexcept {
     auto it = this->find(key);
     CHECK(it != this->end());
     return it->second;
@@ -158,7 +158,7 @@ class UnorderedSet : public std::unordered_set<Key, Hash, Pred, Alloc> {
     return this->find(key) != this->end();
   }
 
-  iterator insert_new(const Key& key) throw() {
+  iterator insert_new(const Key& key) noexcept {
     auto it = this->insert(key);
     CHECK(it.second);
     return it.first;

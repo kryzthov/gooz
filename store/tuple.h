@@ -57,7 +57,7 @@ class Tuple : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual ValueType type() const throw() { return kType; }
+  virtual ValueType type() const noexcept { return kType; }
   virtual uint64 caps() const { return Value::CAP_RECORD | Value::CAP_TUPLE; }
 
   virtual void ExploreValue(ReferenceMap* ref_map);

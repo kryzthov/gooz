@@ -322,16 +322,16 @@ enum Ownership {
 // WARNING: if Dest or Source is a non-POD type, the result of the memcpy
 // is likely to surprise you.
 
-template <class Dest, class Source>
-inline Dest bit_cast(const Source& source) {
-  // Compile time assertion: sizeof(Dest) == sizeof(Source)
-  // A compile error here means your Dest and Source have different sizes.
-  typedef char VerifySizesAreEqual [sizeof(Dest) == sizeof(Source) ? 1 : -1];
-
-  Dest dest;
-  memcpy(&dest, &source, sizeof(dest));
-  return dest;
-}
+// template <class Dest, class Source>
+// inline Dest bit_cast(const Source& source) {
+//   // Compile time assertion: sizeof(Dest) == sizeof(Source)
+//   // A compile error here means your Dest and Source have different sizes.
+//   typedef char VerifySizesAreEqual [sizeof(Dest) == sizeof(Source) ? 1 : -1];
+//
+//   Dest dest;
+//   memcpy(&dest, &source, sizeof(dest));
+//   return dest;
+// }
 
 // The following enum should be used only as a constructor argument to indicate
 // that the variable has static storage class, and that the constructor should

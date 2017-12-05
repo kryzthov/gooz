@@ -66,7 +66,7 @@ class Record : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual ValueType type() const throw() { return kType; }
+  virtual ValueType type() const noexcept { return kType; }
   virtual uint64 caps() const { return Value::CAP_RECORD; }
 
   virtual void ExploreValue(ReferenceMap* ref_map);

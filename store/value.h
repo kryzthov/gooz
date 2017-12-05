@@ -87,8 +87,8 @@ class FeatureNotFound : public std::exception {
  public:
   FeatureNotFound(const string& message) : message_(message) {}
   FeatureNotFound(const Value& feature, Arity* arity);
-  virtual ~FeatureNotFound() throw() {}
-  virtual const char* what() const throw() {
+  virtual ~FeatureNotFound() noexcept {}
+  virtual const char* what() const noexcept {
     return message_.c_str();
   }
 

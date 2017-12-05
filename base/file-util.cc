@@ -25,8 +25,7 @@ bool ReadFileToString(const string& file_path, string* content) {
   return true;
 }
 
-void ListDir(const string& path, vector<string>* entries)
-    throw(Exception) {
+void ListDir(const string& path, vector<string>* entries) {
   CHECK_NOTNULL(entries);
   DIR* dp = opendir(path.c_str());
   if (dp == NULL) throw Exception();
@@ -42,8 +41,7 @@ void ListDir(const string& path, vector<string>* entries)
 
 void ListDirPattern(const string& path,
                     const string& pattern,
-                    vector<string>* entries)
-    throw(Exception) {
+                    vector<string>* entries) {
   vector<string> lentries;
   ListDir(path, &lentries);
 

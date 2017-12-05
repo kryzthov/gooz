@@ -26,7 +26,7 @@ class MovedValue : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
 
   // This is not really a value.
   virtual Value Deref() { throw NotImplemented(); }

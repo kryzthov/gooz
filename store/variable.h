@@ -61,7 +61,7 @@ class Variable : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
 
   virtual Value Deref();
   virtual Value Optimize(OptimizeContext* context);

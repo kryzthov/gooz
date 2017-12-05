@@ -25,7 +25,7 @@ class String : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual ValueType type() const throw() { return kType; }
+  virtual ValueType type() const noexcept { return kType; }
   virtual bool UnifyWith(UnificationContext* context, Value value);
   virtual bool Equals(EqualityContext* context, Value value);
 

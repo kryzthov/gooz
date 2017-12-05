@@ -29,7 +29,7 @@ class Integer : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
   virtual uint64 caps() const { return Value::CAP_LITERAL; }
   virtual bool UnifyWith(UnificationContext* context, Value value);
   virtual bool Equals(EqualityContext* context, Value value);

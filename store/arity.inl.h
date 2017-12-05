@@ -36,22 +36,22 @@ Arity* Arity::New(Store* store, uint64 size, Value const * literals) {
 }
 
 inline
-uint64 Arity::Map(int64 integer) throw(FeatureNotFound) {
+uint64 Arity::Map(int64 integer) {  // throws FeatureNotFound
   return Map(Value::Integer(integer));
 }
 
 inline
-uint64 Arity::Map(const StringPiece& atom) throw(FeatureNotFound) {
+uint64 Arity::Map(const StringPiece& atom) {  // throws FeatureNotFound
   return Map(Atom::Get(atom));
 }
 
 inline
-bool Arity::Has(int64 integer) const throw() {
+bool Arity::Has(int64 integer) const noexcept {
   return Has(Value::Integer(integer));
 }
 
 inline
-bool Arity::Has(const StringPiece& atom) const throw() {
+bool Arity::Has(const StringPiece& atom) const noexcept {
   return Has(Atom::Get(atom));
 }
 

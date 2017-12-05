@@ -73,7 +73,7 @@ Arity::Arity(const vector<Value>& literals, uint64 hash)
   //   fmap_[features_[i]] = i;
 }
 
-uint64 Arity::Map(Value feature) throw(FeatureNotFound) {
+uint64 Arity::Map(Value feature) {  // throws FeatureNotFound
   auto bounds = std::equal_range(features_.begin(), features_.end(),
                                  feature, Literal::LessThan);
   const uint64 nmatches = int(bounds.second - bounds.first);
@@ -87,7 +87,7 @@ uint64 Arity::Map(Value feature) throw(FeatureNotFound) {
 //   return fmap_.find(feature)->second;
 // }
 
-bool Arity::Has(Value feature) const throw() {
+bool Arity::Has(Value feature) const noexcept {
   return std::binary_search(features_.begin(), features_.end(),
                             feature, Literal::LessThan);
 }

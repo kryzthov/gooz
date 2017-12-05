@@ -43,7 +43,7 @@ class Boolean : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual ValueType type() const throw() { return kType; }
+  virtual ValueType type() const noexcept { return kType; }
 
   // ---------------------------------------------------------------------------
   // Implement serialization

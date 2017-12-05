@@ -26,7 +26,7 @@ class Name : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
   virtual uint64 caps() const { return Value::CAP_RECORD; }
 
   virtual HeapValue* MoveInternal(Store* store);

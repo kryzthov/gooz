@@ -50,7 +50,7 @@ class Array : public HeapValue {
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual ValueType type() const throw() { return kType; }
+  virtual ValueType type() const noexcept { return kType; }
 
   virtual void ExploreValue(ReferenceMap* ref_map);
   virtual Value Optimize(OptimizeContext* context);

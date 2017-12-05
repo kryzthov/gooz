@@ -59,8 +59,8 @@ class Arity : public HeapValue {
   vector<Value>& features() { return features_; }
   uint64 size() const { return features_.size(); }
 
-  uint64 Map(Value feature) throw(FeatureNotFound);
-  bool Has(Value value) const throw();
+  uint64 Map(Value feature); // throws FeatureNotFound
+  bool Has(Value value) const noexcept;
 
   // @returns If this is a tuple arity.
   bool IsTuple() const;
@@ -95,14 +95,14 @@ class Arity : public HeapValue {
   Value ComputeSubsetMask(Store* store, Arity* arity) const;
 
   // Convenience
-  uint64 Map(int64 integer) throw(FeatureNotFound);
-  uint64 Map(const StringPiece& atom) throw(FeatureNotFound);
-  bool Has(int64 integer) const throw();
-  bool Has(const StringPiece& atom) const throw();
+  uint64 Map(int64 integer);  // throws FeatureNotFound
+  uint64 Map(const StringPiece& atom);  // throws FeatureNotFound
+  bool Has(int64 integer) const noexcept;
+  bool Has(const StringPiece& atom) const noexcept;
 
   // ---------------------------------------------------------------------------
   // Value API
-  virtual Value::ValueType type() const throw() { return kType; }
+  virtual Value::ValueType type() const noexcept { return kType; }
   virtual void ExploreValue(ReferenceMap* ref_map);
 
   // Arities are interned.
