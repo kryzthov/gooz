@@ -10,6 +10,8 @@ using boost::format;
 
 #include "base/file-util.h"
 #include "base/stl-util.h"
+#include "store/values.h"
+// #include "store/thread.h"
 #include "combinators/bytecode.h"
 #include "store/bytecode.h"
 #include "store/thread.inl.h"

@@ -13,10 +13,10 @@ Sub = proc(
 
 Main = proc(
   nlocals: 1
-	bytecode: segment(
+  bytecode: segment(
     l0 := 'x'
     call_native(name:print params:l*)
-		call(proc:Sub params:p*)
+    call(proc:Sub params:p*)
     call_native(name:print params:l*)
   )
 )

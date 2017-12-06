@@ -2,7 +2,7 @@
 Expected = '120'
 
 Factorial = proc(
-	nparams: 1
+  nparams: 1
   nlocals: 0
   bytecode: segment(
     a* := array(size:2 init:_)
@@ -27,7 +27,7 @@ Factorial = proc(
     p0 := a0
     return()
 
-  Factorial0:
+   Factorial0:
     % return 1
     p0 := 1
     return()

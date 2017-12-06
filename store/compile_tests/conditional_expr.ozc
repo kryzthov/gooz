@@ -6,9 +6,9 @@ Main = 'proc'(
     call(native:print params:p(a))
     'local'(
       locals:l(
-			  a(false)
-			  b(true)
-			  x(
+        a(false)
+        b(true)
+        x(
           conditional(
             cases: cases(
               'if'(cond:var(a) 'then':1)

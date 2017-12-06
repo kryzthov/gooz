@@ -98,9 +98,12 @@ cc_test(
 # cc_library(
 #     name="bytecode",
 #     srcs=["bytecode.cc", "bytecode.h"],
-#     deps=[":combinators"],
+#     deps=[
+#         ":combinators",
+#         "//store",
+#     ],
 # )
-#
+
 # cc_test(
 #     name="bytecode_test",
 #     srcs=[

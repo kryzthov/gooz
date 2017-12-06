@@ -1,3 +1,4 @@
+#include "store/values.h"
 #include "combinators/bytecode.h"
 
 using store::Bytecode;

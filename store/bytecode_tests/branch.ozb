@@ -1,11 +1,11 @@
 Expected = 'y'
 Main = proc(
   nlocals: 1
-	bytecode: segment(
-	  branch(to:End)
+  bytecode: segment(
+    branch(to:End)
     l0 := 'x'
     call_native(name:print params:l*)
-	 End:
+   End:
     l0 := 'y'
     call_native(name:print params:l*)
     return()

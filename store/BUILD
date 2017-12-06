@@ -101,18 +101,22 @@ cc_test(
     ],
 )
 
+# The bytecode (*.ozb) parser is not compiling right now
 # cc_test(
-#     name="base_test",
-#     srcs=glob(
-#         include=["*_test.cc"],
-#     ),
-#     deps=[":base"],
-#     linkopts=[
-#         "-L/W/github.com/google/googletest/bazel-bin",
-#         "-lgflags",
-#         "-lgtest",
-#         "-lmpfr",
-#         "-lglog",
-#         "-lboost_regex",
+#     name="bytecode_test",
+#     srcs=["bytecode_test.cc"],
+#     deps=[
+#         ":store",
+#         "//combinators:bytecode",
+#         "//base:test",
 #     ],
 # )
+
+cc_binary(
+    name="run_ozc",
+    srcs=["compile_run_bytecode.cc"],
+    deps=[
+        ":store",
+        "//combinators",
+    ],
+)

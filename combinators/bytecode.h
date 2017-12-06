@@ -13,11 +13,11 @@ using std::vector;
 #include "base/stl-util.h"
 
 // #include "combinators/matchers.h"
+#include "combinators/base.h"
 #include "combinators/stream.h"
 // #include "combinators/primitives.h"
 // #include "combinators/composite.h"
 #include "store/bytecode.h"
-#include "store/thread.h"
 #include "store/values.h"
 
 namespace combinators {

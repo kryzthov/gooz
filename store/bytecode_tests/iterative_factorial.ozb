@@ -7,13 +7,13 @@ Factorial = proc(
   bytecode: segment(
     a* := array(size:2 init:_)
 
-	  % accumulator
+    % accumulator
     l0 := 1
 
-		% counter from N down to 0
+    % counter from N down to 0
     l1 := p0
 
-	 Loop:
+   Loop:
     % if l1 == 0: goto End
     a0 := l1
     call_native(name:'is_zero' params:a*)
